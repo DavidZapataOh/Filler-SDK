@@ -9,10 +9,4 @@
 
 export type { Intent, IntentFilter, IntentSurface } from '../types';
 
-/**
- * Internal placeholder so tsup has something to bundle. Removed when Plan 03
- * lands the real `IntentStream` class.
- *
- * @internal
- */
-export const __INTENTS_PLACEHOLDER = Symbol.for('@filler-sdk/sdk:intents:v0');
+export { IntentStream, type IntentStreamConfig } from './stream';

@@ -90,17 +90,34 @@ describe('createFiller', () => {
     expect(filler.config.indexer.baseUrl).toBe('https://hints.filler.xyz');
   });
 
-  test('all surfaces throw FillerError(UNKNOWN) until Plan 02', async () => {
+  test('subscribe is real (Plan 02); other surfaces throw until Plans 03-08', async () => {
     const filler = createFiller(validConfig);
-    expect(() =>
-      filler.intents.subscribe({}, () => {
-        // no-op
-      }),
-    ).toThrow(FillerError);
+
+    // Plan 02 wires subscribe — does NOT throw, returns an unsubscribe fn.
+    const unsubscribe = filler.intents.subscribe({}, () => {
+      // no-op handler
+    });
+    expect(typeof unsubscribe).toBe('function');
+    unsubscribe();
+
+    // Plan 03 wires the log decoder.
     await expect(filler.intents.list()).rejects.toBeInstanceOf(FillerError);
-    await expect(
-      filler.indexer.health(),
-    ).rejects.toBeInstanceOf(FillerError);
+
+    // Plan 04 wires execute / simulate.
+    const stubIntent = { orderHash: '0x', deadline: 0n } as never;
+    const stubParams = {} as never;
+    await expect(filler.fills.execute(stubIntent, stubParams)).rejects.toBeInstanceOf(
+      FillerError,
+    );
+    await expect(filler.fills.simulate(stubIntent, stubParams)).rejects.toBeInstanceOf(
+      FillerError,
+    );
+
+    // Plan 06 wires depth + health.
+    await expect(filler.indexer.health()).rejects.toBeInstanceOf(FillerError);
+
+    // Plan 07 wires bond reads + writes.
+    await expect(filler.bond.totalStake()).rejects.toBeInstanceOf(FillerError);
   });
 
   test('shutdown is idempotent + resolves quickly', async () => {

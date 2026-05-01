@@ -12,7 +12,4 @@ export type {
   IndexerSurface,
 } from '../types';
 
-/**
- * @internal
- */
-export const __INDEXER_PLACEHOLDER = Symbol.for('@filler-sdk/sdk:indexer:v0');
+export { IndexerClient, type IndexerClientConfig } from './client';

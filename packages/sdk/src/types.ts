@@ -79,6 +79,14 @@ export interface Intent {
   txHash: Hash;
   /** keccak256 of the canonical encoded order (used as the unique key). */
   orderHash: Hash;
+  /**
+   * Raw ABI-encoded order bytes — required to reconstruct a `SignedOrder` for
+   * `Filler.execute(SignedOrder, bytes)`. Sourced from the original
+   * `OrderEvent` log payload.
+   */
+  rawOrder: Hex;
+  /** Swapper's signature over the canonical order bytes. */
+  signature: Hex;
 }
 
 export interface TokenAmount {
@@ -95,11 +103,22 @@ export interface ResolvedOutput {
 }
 
 /**
- * Filter passed to `IntentStream` (Plan 03). Anything matched by the filter
- * is pushed to the consumer; non-matches are dropped at the indexer boundary
- * (no per-intent decoding cost in the solver process).
+ * Filter passed to `IntentStream` (Plan 03). Two valid shapes:
+ *
+ *   1. `IntentFilterCriteria` — a typed object with optional fields. The
+ *      stream evaluates each field against the intent and only emits matches.
+ *      Best for static filters known at boot.
+ *
+ *   2. `IntentFilterPredicate` — a function `(intent) => boolean | Promise<boolean>`.
+ *      Best for dynamic filters that depend on per-intent computation
+ *      (e.g. "only intents where the input token is in our hot-pool set").
+ *
+ * Anything matched by the filter is pushed to the consumer; non-matches are
+ * dropped at the stream boundary (no per-intent decoding cost downstream).
  */
-export interface IntentFilter {
+export type IntentFilter = IntentFilterCriteria | IntentFilterPredicate;
+
+export interface IntentFilterCriteria {
   /** If set, only intents on these chains are surfaced. */
   chainIds?: readonly ChainId[];
   /**
@@ -118,31 +137,57 @@ export interface IntentFilter {
   reactors?: readonly Address[];
 }
 
+export type IntentFilterPredicate = (
+  intent: Intent,
+) => boolean | Promise<boolean>;
+
+/** Type guard separating the two filter shapes. */
+export function isIntentFilterPredicate(
+  filter: IntentFilter,
+): filter is IntentFilterPredicate {
+  return typeof filter === 'function';
+}
+
 // === Fills =================================================================
 
 /**
  * Parameters for a single fill, as constructed by the FillEngine (Plan 04).
- * The shape mirrors `FillParams` in the Solidity contract.
+ *
+ * Shape mirrors the Solidity `FillParams` struct in
+ * `contracts/src/libraries/FillParams.sol` exactly, so ABI-encoding via viem's
+ * `encodeAbiParameters` produces bytes that round-trip through the contract's
+ * `FillParamsLib.validate()`.
+ *
+ * Field-by-field invariants (enforced on-chain):
+ *   - `tickLower < tickUpper`, both within [MIN_TICK, MAX_TICK]
+ *   - both ticks divisible by `poolKey.tickSpacing`
+ *   - `liquidityDelta`, `inputAmount`, `outputAmount` all non-zero
+ *   - `inputCurrency`/`outputCurrency` match `poolKey.currency0/1` per `zeroForOne`
+ *   - `deadline > block.timestamp`
  */
 export interface FillParams {
   /** PoolKey of the v4 pool to route through. */
   poolKey: PoolKey;
+  /** Currency the swapper is sending in. */
+  inputCurrency: Address;
+  /** Currency the swapper expects out. */
+  outputCurrency: Address;
+  /** Amount of `inputCurrency` provided. */
+  inputAmount: bigint;
+  /** Minimum amount of `outputCurrency` the swapper accepts. */
+  outputAmount: bigint;
   /** True for token0 → token1; false for token1 → token0. */
   zeroForOne: boolean;
-  /** Exact-input swap amount (signed: positive for exactIn). */
-  amountSpecified: bigint;
-  /**
-   * Optional sqrt-price limit. `0n` means "no limit". The engine sets a
-   * sensible default from the depth hint when unset.
-   */
-  sqrtPriceLimitX96: bigint;
-  /** Optional hook data passed to v4 callbacks. `0x` for none. */
-  hookData: Hex;
-  /** Tick range for JIT inventory (Plan 05 calibrates this). */
+  /** Lower bound of the JIT range (must align to `poolKey.tickSpacing`). */
   tickLower: number;
+  /** Upper bound of the JIT range. */
   tickUpper: number;
-  /** Liquidity to add+remove inside the atomic fill. */
+  /** Liquidity to add (and later remove) for the JIT cycle. */
   liquidityDelta: bigint;
+  /** Estimated fees captured — emitted in events for analytics. */
+  feesCaptured: bigint;
+  /** UNIX timestamp past which the fill is invalid. */
+  deadline: bigint;
 }
 
 /**
@@ -169,15 +214,23 @@ export interface FillResult {
 // === Top-level handle ======================================================
 
 /**
- * The handle returned by `createFiller`. Three composable surfaces:
+ * The handle returned by `createFiller`.
  *
- *   filler.intents.subscribe(...) — listen for matching UniswapX intents
- *   filler.fills.execute(...)     — submit a fill (with simulate + broadcast)
- *   filler.indexer                — direct access to the JIT-hints HTTP client
+ * Two equivalent ways to drive it:
  *
- * The handle is intentionally minimal: anything more advanced (bond ops,
- * keeperhub integrations, anvil testing) lives behind a separate import path
- * so tree-shaking can drop it.
+ *   1. Grouped surfaces — explicit + tree-shake friendly:
+ *        filler.intents.subscribe(filter, onIntent)
+ *        filler.fills.execute(intent, params)
+ *        filler.indexer.depth(query)
+ *
+ *   2. Flat surface — closer to legacy 1inch-fusion ergonomics, easier for
+ *      tutorials + the `create-filler` CLI starter:
+ *        filler.subscribeIntents(predicate, onIntent)
+ *        filler.prepareFill(intent)
+ *        filler.submitFill(intent, params, opts)
+ *
+ * Both routes hit the same internal `IntentStream` / `FillEngine` /
+ * `IndexerClient`, so picking one is purely a style choice.
  */
 export interface Filler {
   /** Configured chain id. */
@@ -192,8 +245,93 @@ export interface Filler {
   readonly fills: FillSurface;
   /** JIT-hints HTTP client — typed in Plan 06. */
   readonly indexer: IndexerSurface;
+  /**
+   * Bond client surface — stake / unstake / withdraw against `FillerBond`.
+   * Typed in Plan 07.
+   */
+  readonly bond: BondClientHandle;
+
+  // === Flat surface (Plan 02) — shortcuts onto the same underlying objects ==
+
+  /**
+   * Subscribe to intents matching `filter`. Same semantics as
+   * `intents.subscribe(filter, onIntent)`. Errors thrown by `onIntent` are
+   * caught + logged so a bad handler doesn't tear down the stream.
+   * Returns an unsubscribe function.
+   */
+  subscribeIntents(
+    filter: IntentFilter,
+    onIntent: (intent: Intent) => void | Promise<void>,
+  ): () => void;
+
+  /**
+   * Build the `FillParams` for an intent, returning `null` if no profitable
+   * fill exists (slippage budget exhausted, depth too thin, etc.). Wraps
+   * `fills.simulate` + tick-calibration logic. Implementation lands in
+   * Plan 04 + Plan 05.
+   */
+  prepareFill(intent: Intent): Promise<FillParams | null>;
+
+  /**
+   * End-to-end fill: simulate → sign → broadcast → wait for receipt. Same as
+   * `fills.execute`, but accepts a `SubmitFillOptions` bag for routing /
+   * gas multiplier / KeeperHub override.
+   */
+  submitFill(
+    intent: Intent,
+    params: FillParams,
+    options?: SubmitFillOptions,
+  ): Promise<FillResult>;
+
   /** Stop all background work (intent stream, polling). Idempotent. */
   shutdown(): Promise<void>;
+
+  /** Alias for `shutdown` — matches the Plan 02 spec ergonomics. */
+  close(): Promise<void>;
+}
+
+/**
+ * Options for `Filler.submitFill` / `fills.execute`.
+ *
+ * All fields are optional + have sane defaults wired in `createFiller`. The
+ * struct is open for extension — Plan 08 (KeeperHub) will add fields here
+ * without breaking existing call sites.
+ */
+export interface SubmitFillOptions {
+  /**
+   * If true (and KeeperHub is configured), route the fill through the
+   * KeeperHub's mempool-private path. Default: true if KeeperHub is
+   * configured, else false.
+   */
+  useKeeperHub?: boolean;
+  /**
+   * Multiplier on the simulation's gas estimate before broadcast. Defaults
+   * to `1.2` so we don't underprice volatile blocks.
+   */
+  gasMultiplier?: number;
+  /**
+   * If true, use the wallet's private-routing transport (Flashbots / Titan /
+   * MEV-Share) when available. Default: false (mempool).
+   */
+  privateRouting?: boolean;
+}
+
+/**
+ * Minimum public surface of the BondClient — the actual class lives in
+ * `src/bond/client.ts` and is exported from `@filler-sdk/sdk/bond`. We
+ * reference its handle from the top-level `Filler` so users can write
+ * `filler.bond.totalStake()` without a second import.
+ */
+export interface BondClientHandle {
+  readonly chainId: ChainId;
+  readonly bondContract: Address;
+  readonly account: Address;
+  totalStake(): Promise<bigint>;
+  activeStake(): Promise<bigint>;
+  pendingUnstake(): Promise<bigint>;
+  slashedTotal(): Promise<bigint>;
+  requestUnstake(amount: bigint): Promise<Hash>;
+  withdraw(): Promise<Hash>;
 }
 
 /** User-supplied configuration. Validated at runtime by `createFiller`. */
@@ -208,13 +346,45 @@ export interface FillerConfig {
    */
   transport: FillerTransport;
   /**
+   * On-chain contract addresses. Required for `submitFill` / bond ops. If
+   * omitted the SDK falls back to `getDeployedAddresses(chainId)` — but for
+   * mainnets these are placeholder until Sprint 01's deploy script lands, so
+   * production callers MUST set them explicitly.
+   */
+  addresses?: Partial<Pick<ChainContractAddresses, 'filler' | 'fillerBond' | 'reactor' | 'poolManager'>>;
+  /**
    * Optional `IndexerClient` config. Defaults to `https://hints.filler.xyz`
    * (the public hosted indexer) but every solver SHOULD self-host (see
    * `@filler-sdk/jit-hints`).
    */
   indexer?: IndexerConfig;
+  /**
+   * Optional KeeperHub config. When set, `submitFill({ useKeeperHub: true })`
+   * routes through the hub's mempool-private path. Plan 08.
+   */
+  keeperHub?: KeeperHubConfig;
   /** Optional logger; defaults to a Pino instance with sensible production defaults. */
   logger?: FillerLogger;
+}
+
+/**
+ * Subset of `ChainDeployedAddresses` that solver authors override per
+ * environment. Re-exported here so users can type their config bag without
+ * importing from `./chains`.
+ */
+export interface ChainContractAddresses {
+  poolManager: Address;
+  permit2: Address;
+  reactor: Address;
+  filler: Address;
+  fillerBond: Address;
+}
+
+export interface KeeperHubConfig {
+  /** Hub base URL. Must be `https://`. */
+  baseUrl: string;
+  /** Bearer token issued during solver onboarding. */
+  apiKey: string;
 }
 
 /**
@@ -242,19 +412,31 @@ export interface IndexerConfig {
 
 /**
  * Resolved + validated config — what the SDK uses internally. Same shape as
- * `FillerConfig` but with all defaults applied.
+ * `FillerConfig` but with every default applied.
  */
-export interface ResolvedFillerConfig
-  extends Required<Omit<FillerConfig, 'logger' | 'indexer'>> {
+export interface ResolvedFillerConfig {
+  chainId: ChainId;
+  account: Address;
+  transport: FillerTransport;
+  addresses: ChainContractAddresses;
   indexer: Required<IndexerConfig>;
+  keeperHub: KeeperHubConfig | null;
   logger: FillerLogger;
 }
 
 // === Surfaces — implemented in plans 03/04/06 =============================
 
 export interface IntentSurface {
-  /** Subscribe to intents matching `filter`. Returns an unsubscribe fn. */
-  subscribe(filter: IntentFilter, onIntent: (i: Intent) => void): () => void;
+  /**
+   * Subscribe to intents matching `filter`. The handler may be async — the
+   * stream awaits it sequentially (back-pressure-safe). Errors thrown by the
+   * handler are caught + logged, never killing the subscription.
+   * Returns an unsubscribe function (idempotent).
+   */
+  subscribe(
+    filter: IntentFilter,
+    onIntent: (i: Intent) => void | Promise<void>,
+  ): () => void;
   /** Snapshot the current open-intent set without subscribing. */
   list(filter?: IntentFilter): Promise<readonly Intent[]>;
 }

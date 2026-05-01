@@ -15,10 +15,17 @@
  */
 
 // === Top-level handle ======================================================
-export { createFiller, resolveFillerConfig } from './createFiller';
+export {
+  type CreateFillerFromPrivateKeyConfig,
+  createFiller,
+  createFillerFromPrivateKey,
+  resolveFillerConfig,
+} from './createFiller';
 
 // === Public types ==========================================================
 export type {
+  BondClientHandle,
+  ChainContractAddresses,
   ChainId,
   ChainStatus,
   DepthHint,
@@ -34,14 +41,21 @@ export type {
   IndexerSurface,
   Intent,
   IntentFilter,
+  IntentFilterCriteria,
+  IntentFilterPredicate,
   IntentSurface,
+  KeeperHubConfig,
   PoolId,
   PoolKey,
   ResolvedFillerConfig,
   ResolvedOutput,
   SimulationResult,
+  SubmitFillOptions,
   TokenAmount,
 } from './types';
+
+// Type guard exposed alongside its types.
+export { isIntentFilterPredicate } from './types';
 
 // === Errors ================================================================
 export {
@@ -67,6 +81,7 @@ export {
   getChainById,
   getChainByName,
   getDeployedAddresses,
+  getViemChain,
   isSupportedChainId,
 } from './chains';
 

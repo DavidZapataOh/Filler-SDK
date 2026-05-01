@@ -24,12 +24,26 @@
  *     via the SDK's optional `addresses` config.
  */
 
-import type { Address } from 'viem';
+import type { Address, Chain } from 'viem';
+import {
+  arbitrum as viemArbitrum,
+  base as viemBase,
+  mainnet as viemMainnet,
+  optimism as viemOptimism,
+  sepolia as viemSepolia,
+} from 'viem/chains';
 
 /** Supported chain identifiers. Branded so callers can't pass arbitrary numbers. */
-export type ChainId = 1 | 130 | 8453 | 42161 | 10;
+export type ChainId = 1 | 130 | 8453 | 42161 | 10 | 11_155_111 | 11_155_420;
 
-export type ChainName = 'mainnet' | 'unichain' | 'base' | 'arbitrum' | 'optimism';
+export type ChainName =
+  | 'mainnet'
+  | 'unichain'
+  | 'base'
+  | 'arbitrum'
+  | 'optimism'
+  | 'sepolia'
+  | 'unichainSepolia';
 
 export interface ChainDeployedAddresses {
   /** Uniswap v4 PoolManager. */
@@ -141,6 +155,38 @@ const OPTIMISM: ChainConfig = {
   },
 };
 
+// Testnet entries — addresses are placeholders until Sprint 01 deploy lands
+// (see `contracts/script/DeploySepolia.s.sol` + `DeployUnichainSepolia.s.sol`).
+// Operators MUST override via `getDeployedAddresses(chain, overrides)` until
+// the canonical deploy script is run.
+const SEPOLIA: ChainConfig = {
+  id: 11_155_111,
+  name: 'sepolia',
+  displayName: 'Sepolia',
+  blockTimeSec: 12,
+  addresses: {
+    poolManager: PLACEHOLDER,
+    permit2: PERMIT2,
+    reactor: PLACEHOLDER,
+    filler: PLACEHOLDER,
+    fillerBond: PLACEHOLDER,
+  },
+};
+
+const UNICHAIN_SEPOLIA: ChainConfig = {
+  id: 11_155_420,
+  name: 'unichainSepolia',
+  displayName: 'Unichain Sepolia',
+  blockTimeSec: 1,
+  addresses: {
+    poolManager: PLACEHOLDER,
+    permit2: PERMIT2,
+    reactor: PLACEHOLDER,
+    filler: PLACEHOLDER,
+    fillerBond: PLACEHOLDER,
+  },
+};
+
 /**
  * The exhaustive chain registry. Iterated by `getChainById` / `getChainByName`.
  * Frozen so consumers can't accidentally mutate the deployed addresses table
@@ -152,6 +198,8 @@ export const chains = Object.freeze({
   base: BASE,
   arbitrum: ARBITRUM,
   optimism: OPTIMISM,
+  sepolia: SEPOLIA,
+  unichainSepolia: UNICHAIN_SEPOLIA,
 }) satisfies Readonly<Record<ChainName, ChainConfig>>;
 
 const BY_ID: Readonly<Record<ChainId, ChainConfig>> = Object.freeze({
@@ -160,6 +208,8 @@ const BY_ID: Readonly<Record<ChainId, ChainConfig>> = Object.freeze({
   8453: BASE,
   42161: ARBITRUM,
   10: OPTIMISM,
+  11_155_111: SEPOLIA,
+  11_155_420: UNICHAIN_SEPOLIA,
 });
 
 export function getChainById(id: ChainId): ChainConfig {
@@ -188,4 +238,53 @@ export function getDeployedAddresses(
 /** Type guard — narrows arbitrary numbers down to a supported `ChainId`. */
 export function isSupportedChainId(id: number): id is ChainId {
   return id in BY_ID;
+}
+
+// === viem Chain interop ===================================================
+
+// Custom Unichain definitions (viem upstream may not include them yet).
+const UNICHAIN_VIEM: Chain = {
+  id: 130,
+  name: 'Unichain',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://mainnet.unichain.org'] },
+  },
+  blockExplorers: {
+    default: { name: 'Uniscan', url: 'https://uniscan.xyz' },
+  },
+};
+
+const UNICHAIN_SEPOLIA_VIEM: Chain = {
+  id: 11_155_420,
+  name: 'Unichain Sepolia',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://sepolia.unichain.org'] },
+  },
+  testnet: true,
+};
+
+const VIEM_BY_ID: Readonly<Record<ChainId, Chain>> = Object.freeze({
+  1: viemMainnet,
+  130: UNICHAIN_VIEM,
+  8453: viemBase,
+  42161: viemArbitrum,
+  10: viemOptimism,
+  11_155_111: viemSepolia,
+  11_155_420: UNICHAIN_SEPOLIA_VIEM,
+});
+
+/**
+ * Resolve a viem `Chain` object for the given chain id. Solver authors call
+ * this when constructing their own `PublicClient` / `WalletClient` (BYO viem
+ * setup) — the SDK's `createFillerFromPrivateKey` shortcut does it
+ * automatically.
+ */
+export function getViemChain(id: ChainId): Chain {
+  const chain = VIEM_BY_ID[id];
+  if (chain === undefined) {
+    throw new Error(`Unsupported chain ID: ${id}`);
+  }
+  return chain;
 }

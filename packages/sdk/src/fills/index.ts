@@ -13,7 +13,4 @@ export type {
   SimulationResult,
 } from '../types';
 
-/**
- * @internal
- */
-export const __FILLS_PLACEHOLDER = Symbol.for('@filler-sdk/sdk:fills:v0');
+export { FillEngine, type FillEngineConfig } from './engine';

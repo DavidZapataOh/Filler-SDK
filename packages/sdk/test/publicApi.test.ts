@@ -23,15 +23,34 @@ describe('@filler-sdk/sdk — public exports', () => {
     expect(typeof sdk.resolveFillerConfig).toBe('function');
   });
 
-  test('chain registry is frozen + has all five canonical chains', () => {
+  test('chain registry is frozen + has all 5 mainnets + 2 testnets', () => {
     expect(Object.isFrozen(sdk.chains)).toBe(true);
     expect(Object.keys(sdk.chains).sort()).toEqual([
       'arbitrum',
       'base',
       'mainnet',
       'optimism',
+      'sepolia',
       'unichain',
+      'unichainSepolia',
     ]);
+  });
+
+  test('isSupportedChainId narrows correctly for testnets too', () => {
+    expect(sdk.isSupportedChainId(11_155_111)).toBe(true);
+    expect(sdk.isSupportedChainId(11_155_420)).toBe(true);
+  });
+
+  test('getViemChain returns a viem Chain object for each supported id', () => {
+    for (const id of [1, 130, 8453, 42161, 10, 11_155_111, 11_155_420] as const) {
+      const chain = sdk.getViemChain(id);
+      expect(chain.id).toBe(id);
+      expect(typeof chain.name).toBe('string');
+    }
+  });
+
+  test('getViemChain throws on unsupported id', () => {
+    expect(() => sdk.getViemChain(999_999 as never)).toThrow(/Unsupported/);
   });
 
   test('isSupportedChainId narrows correctly', () => {
