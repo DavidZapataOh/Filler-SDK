@@ -1,0 +1,37 @@
+# Foundry
+out/
+cache/
+broadcast/
+docs/
+.gas-snapshot
+snapshots/*.gas-snapshot
+
+# Dependencies
+lib/
+
+# Coverage
+coverage/
+lcov.info
+*.lcov
+
+# Deploy artifacts (commit chain-specific deployments json, ignore raw broadcast)
+deployments/*.json
+!deployments/.gitkeep
+
+# Snapshots — keep .gas-snapshot baseline (committed), ignore intermediate
+snapshots/*
+!snapshots/.gitkeep
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Test artifacts
+corpus/
+crytic-export/
+crytic-corpus/
+
+# IDE
+*.swp
+.DS_Store

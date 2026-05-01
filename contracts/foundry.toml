@@ -1,0 +1,88 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+cache_path = "cache"
+
+# Compiler
+solc = "0.8.30"
+optimizer = true
+optimizer_runs = 1_000_000
+via_ir = true
+evm_version = "prague"
+
+# Reproducible builds
+bytecode_hash = "none"
+cbor_metadata = false
+
+# Test settings
+verbosity = 3
+gas_reports = ["Filler", "FillerBond"]
+fs_permissions = [
+  { access = "read", path = "./" },
+  { access = "write", path = "./deployments" },
+  { access = "write", path = "./snapshots" },
+]
+
+# Default fuzz/invariant tuning (dev mode)
+[profile.default.fuzz]
+runs = 1024
+seed = "0x1"
+max_test_rejects = 65536
+
+[profile.default.invariant]
+runs = 256
+depth = 64
+fail_on_revert = true
+call_override = false
+shrink_run_limit = 5000
+
+# CI profile — heavier fuzz, runs in PRs
+[profile.ci]
+fuzz = { runs = 10_000 }
+invariant = { runs = 1_000, depth = 128 }
+verbosity = 2
+
+# Deep profile — overnight runs for formal-grade verification
+[profile.deep]
+fuzz = { runs = 100_000 }
+invariant = { runs = 5_000, depth = 256 }
+
+# RPC endpoints
+[rpc_endpoints]
+mainnet = "${MAINNET_RPC_URL}"
+sepolia = "${SEPOLIA_RPC_URL}"
+unichain = "${UNICHAIN_RPC_URL}"
+unichain_sepolia = "${UNICHAIN_SEPOLIA_RPC_URL}"
+arbitrum = "${ARBITRUM_RPC_URL}"
+base = "${BASE_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+
+# Etherscan keys per chain
+[etherscan]
+mainnet = { key = "${ETHERSCAN_API_KEY}" }
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
+unichain = { key = "${UNICHAIN_ETHERSCAN_API_KEY}", url = "https://api.uniscan.xyz/api" }
+arbitrum = { key = "${ARBISCAN_API_KEY}" }
+base = { key = "${BASESCAN_API_KEY}" }
+optimism = { key = "${OPTIMISTIC_ETHERSCAN_API_KEY}" }
+
+# Formatter
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+multiline_func_header = "params_first"
+quote_style = "double"
+number_underscore = "thousands"
+override_spacing = true
+wrap_comments = true
+ignore = ["lib/**"]
+
+# Doc generation
+[doc]
+out = "docs"
+title = "Filler SDK Contracts"
