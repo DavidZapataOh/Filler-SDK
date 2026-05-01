@@ -92,10 +92,13 @@ contract Filler is IReactorCallback, IUnlockCallback, Ownable {
         _;
     }
 
+    /// @dev Reset within the same tx so subsequent external calls can re-enter the contract
+    ///      through a different nonReentrant function. Transient storage clears between txs
+    ///      automatically — this reset only matters for sequential calls in one tx.
     modifier nonReentrant() {
-        _nonReentrant();
+        _enterReentrancyGuard();
         _;
-        // Transient storage clears at tx end automatically; no manual unset required.
+        _exitReentrancyGuard();
     }
 
     function _onlyReactor() internal view {
@@ -106,9 +109,13 @@ contract Filler is IReactorCallback, IUnlockCallback, Ownable {
         if (msg.sender != address(POOL_MANAGER)) revert NotPoolManager(msg.sender);
     }
 
-    function _nonReentrant() internal {
+    function _enterReentrancyGuard() internal {
         if (locked) revert Reentrancy();
         locked = true;
+    }
+
+    function _exitReentrancyGuard() internal {
+        locked = false;
     }
 
     // ============ Constructor ============

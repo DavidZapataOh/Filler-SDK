@@ -55,3 +55,6 @@ error AlreadySlashed();
 
 /// @notice Stake amount is zero (must be positive).
 error ZeroStake();
+
+/// @notice Direct ETH transfer to the bond contract is rejected — must use `stake()`.
+error DirectETHRejected();
