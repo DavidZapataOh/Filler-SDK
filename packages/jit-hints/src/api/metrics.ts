@@ -1,4 +1,4 @@
-import { Counter, Histogram, Registry } from 'prom-client';
+import { Counter, Gauge, Histogram, Registry } from 'prom-client';
 
 /**
  * Prometheus metrics for the indexer's HTTP API. Each `createMetrics()` call
@@ -20,6 +20,15 @@ export interface JitHintsMetrics {
 
   /** Depth-cache hits / misses. */
   depthCacheHits: Counter<'kind'>;
+
+  /** Currently open SSE connections, labelled by endpoint. */
+  sseActiveConnections: Gauge<'endpoint'>;
+
+  /** SSE events successfully written, labelled by endpoint + type. */
+  sseEventsTotal: Counter<'endpoint' | 'type'>;
+
+  /** SSE events dropped before write, labelled by endpoint + reason. */
+  sseDroppedTotal: Counter<'endpoint' | 'reason'>;
 }
 
 /** Default histogram buckets, in seconds. Targeted at sub-100ms expected P99. */
@@ -52,10 +61,34 @@ export function createMetrics(): JitHintsMetrics {
     registers: [registry],
   });
 
+  const sseActiveConnections = new Gauge({
+    name: 'jit_hints_sse_active_connections',
+    help: 'Open Server-Sent-Events connections.',
+    labelNames: ['endpoint'] as const,
+    registers: [registry],
+  });
+
+  const sseEventsTotal = new Counter({
+    name: 'jit_hints_sse_events_total',
+    help: 'SSE events successfully written; `type` is "snapshot" | "update" | "heartbeat".',
+    labelNames: ['endpoint', 'type'] as const,
+    registers: [registry],
+  });
+
+  const sseDroppedTotal = new Counter({
+    name: 'jit_hints_sse_dropped_total',
+    help: 'SSE events dropped before write; `reason` describes the cause.',
+    labelNames: ['endpoint', 'reason'] as const,
+    registers: [registry],
+  });
+
   return {
     registry,
     requestsTotal,
     requestDurationSeconds,
     depthCacheHits,
+    sseActiveConnections,
+    sseEventsTotal,
+    sseDroppedTotal,
   };
 }

@@ -3,11 +3,13 @@ import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import type { Logger } from 'pino';
 
+import { type PoolEvents, TypedEventBus, poolEventBus } from '../events/bus';
 import type { JitHintsDb } from './db';
 import { type JitHintsMetrics, createMetrics } from './metrics';
 import { createLoggingMiddleware } from './middleware/logging';
 import { type RateLimiter, createRateLimiter } from './middleware/rateLimit';
 import { createDepthRoute } from './routes/depth';
+import { createDepthStreamRoute } from './routes/depthStream';
 import { createHealthRoute } from './routes/health';
 import { createPoolsRoute } from './routes/pools';
 
@@ -17,18 +19,32 @@ export interface AppOptions {
   logger?: Pick<Logger, 'info' | 'error'>;
   /** Optional injection point for tests. Defaults to a fresh registry. */
   metrics?: JitHintsMetrics;
+  /**
+   * Bus that the SSE handler subscribes to. Defaults to the package singleton
+   * `poolEventBus` so the indexer's event handlers fan out to live SSE clients
+   * in production. Tests pass a fresh `TypedEventBus` for isolation.
+   */
+  eventBus?: TypedEventBus<PoolEvents>;
   /** CORS allow-list. Defaults to `*` for development. */
   corsOrigin?: string | string[];
   /** Rate limiter knobs. */
   rateLimit?: { rps: number; burst: number };
   /** Depth-cache knobs (passed through to the LRU). */
   depthCache?: { ttlMs?: number; max?: number };
+  /** SSE knobs (forwarded to the depth-stream route). */
+  sse?: {
+    maxConnections?: number;
+    heartbeatMs?: number;
+    throttleMs?: number;
+    now?: () => number;
+  };
 }
 
 export interface JitHintsApp {
   app: Hono;
   metrics: JitHintsMetrics;
   rateLimiter: RateLimiter;
+  eventBus: TypedEventBus<PoolEvents>;
 }
 
 /**
@@ -41,6 +57,7 @@ export interface JitHintsApp {
 export function createApp(opts: AppOptions): JitHintsApp {
   const metrics = opts.metrics ?? createMetrics();
   const logger = opts.logger ?? noopLogger();
+  const eventBus = opts.eventBus ?? poolEventBus;
 
   const rateLimiter = createRateLimiter({
     rps: opts.rateLimit?.rps ?? 100,
@@ -78,6 +95,20 @@ export function createApp(opts: AppOptions): JitHintsApp {
     }),
   );
   app.route('/', createPoolsRoute({ db: opts.db }));
+  app.route(
+    '/',
+    createDepthStreamRoute({
+      db: opts.db,
+      eventBus,
+      metrics,
+      ...(opts.sse?.maxConnections !== undefined
+        ? { maxConnections: opts.sse.maxConnections }
+        : {}),
+      ...(opts.sse?.heartbeatMs !== undefined ? { heartbeatMs: opts.sse.heartbeatMs } : {}),
+      ...(opts.sse?.throttleMs !== undefined ? { throttleMs: opts.sse.throttleMs } : {}),
+      ...(opts.sse?.now !== undefined ? { now: opts.sse.now } : {}),
+    }),
+  );
 
   // Prometheus exposition.
   app.get('/metrics', async (c) => {
@@ -91,7 +122,7 @@ export function createApp(opts: AppOptions): JitHintsApp {
     return c.json({ error: 'Internal server error' }, 500);
   });
 
-  return { app, metrics, rateLimiter };
+  return { app, metrics, rateLimiter, eventBus };
 }
 
 function noopLogger(): Pick<Logger, 'info' | 'error'> {
