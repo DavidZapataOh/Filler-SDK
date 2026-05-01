@@ -4,26 +4,63 @@
   "description": "Deploy vertical UniswapX solvers in npm install",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./bond": {
+      "types": "./dist/bond.d.ts",
+      "import": "./dist/bond.js",
+      "require": "./dist/bond.cjs"
+    },
+    "./keeperhub": {
+      "types": "./dist/keeperhub.d.ts",
+      "import": "./dist/keeperhub.js",
+      "require": "./dist/keeperhub.cjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.cjs"
+    },
+    "./abis": {
+      "types": "./dist/abis.d.ts",
+      "import": "./dist/abis.js",
+      "require": "./dist/abis.cjs"
+    },
+    "./package.json": "./package.json"
   },
-  "files": ["dist"],
+  "files": ["dist", "README.md", "LICENSE"],
   "sideEffects": false,
   "scripts": {
-    "build": "echo 'sdk build placeholder — implemented in Sprint 03'",
-    "test": "echo 'sdk tests placeholder — implemented in Sprint 03'",
+    "abi:gen": "bun run scripts/gen-abis.ts",
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "size": "size-limit",
+    "clean": "rm -rf dist coverage .tsup"
   },
   "peerDependencies": {
     "viem": "^2.21.0"
+  },
+  "dependencies": {
+    "pino": "^10.3.1",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@filler-sdk/jit-hints": "workspace:*",
+    "@size-limit/preset-small-lib": "^11.1.6",
+    "@types/node": "^25.6.0",
+    "size-limit": "^11.1.6",
+    "tsup": "^8.3.5",
+    "viem": "^2.48.7",
+    "vitest": "^4.1.5"
   },
   "publishConfig": {
     "access": "public",

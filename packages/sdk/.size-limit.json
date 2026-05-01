@@ -1,0 +1,31 @@
+[
+  {
+    "name": "Main bundle (ESM, gzipped)",
+    "path": "dist/index.js",
+    "limit": "50 KB",
+    "ignore": ["viem", "pino", "zod", "@filler-sdk/jit-hints"]
+  },
+  {
+    "name": "Bond module (gzipped)",
+    "path": "dist/bond.js",
+    "limit": "10 KB",
+    "ignore": ["viem", "pino", "zod"]
+  },
+  {
+    "name": "KeeperHub module (gzipped)",
+    "path": "dist/keeperhub.js",
+    "limit": "8 KB",
+    "ignore": ["viem", "pino", "zod"]
+  },
+  {
+    "name": "Testing utilities (gzipped)",
+    "path": "dist/testing.js",
+    "limit": "20 KB",
+    "ignore": ["viem", "pino", "zod"]
+  },
+  {
+    "name": "ABIs (gzipped)",
+    "path": "dist/abis.js",
+    "limit": "30 KB"
+  }
+]
