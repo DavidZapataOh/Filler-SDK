@@ -1,0 +1,335 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  FOUNDRY_PROFILE: ci
+  FORCE_COLOR: '1'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ===================================================================
+  # TypeScript jobs
+  # ===================================================================
+
+  lint:
+    name: Lint TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.30
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Biome check + tsc strict
+        run: bun run lint
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.30
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Per-package typecheck
+        run: bun run typecheck
+
+  test-typescript:
+    name: Test TS (${{ matrix.os }} / Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.30
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run package tests
+        run: bun run --filter '@filler-sdk/*' test
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./packages/*/coverage/lcov.info
+          flags: typescript
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true # Codecov outage should not block CI
+
+  build-typescript:
+    name: Build TypeScript packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.30
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build all packages
+        run: bun run build
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: |
+            packages/*/dist
+          retention-days: 7
+
+  bundle-size:
+    name: Bundle size budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [build-typescript]
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.30
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build packages
+        run: bun run build
+
+      # size-limit config will be added in Sprint 03 Plan 01
+      - name: Bundle size check (deferred)
+        run: |
+          echo "size-limit config arrives in Sprint 03 Plan 01."
+          echo "This step is a placeholder so PR comments wire up correctly."
+
+  # ===================================================================
+  # Solidity jobs
+  # ===================================================================
+
+  build-contracts:
+    name: Build contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Show forge version
+        run: forge --version
+
+      - name: forge build --sizes
+        working-directory: contracts
+        run: forge build --sizes
+
+  test-contracts:
+    name: Test contracts (CI profile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build-contracts]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: forge test
+        working-directory: contracts
+        env:
+          FOUNDRY_PROFILE: ci
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          UNICHAIN_RPC_URL: ${{ secrets.UNICHAIN_RPC_URL }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          UNICHAIN_SEPOLIA_RPC_URL: ${{ secrets.UNICHAIN_SEPOLIA_RPC_URL }}
+        run: forge test -vvv
+
+      - name: forge coverage
+        working-directory: contracts
+        env:
+          FOUNDRY_PROFILE: ci
+        run: forge coverage --report lcov --report summary --ir-minimum
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: contracts/lcov.info
+          flags: contracts
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+  gas-snapshot:
+    name: Gas snapshot check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: forge snapshot --check
+        id: snapshot
+        working-directory: contracts
+        run: |
+          set -o pipefail
+          forge snapshot --check 2>&1 | tee /tmp/snapshot.diff
+        continue-on-error: true
+
+      - name: Comment gas diff on PR
+        if: steps.snapshot.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            let diff = '';
+            try {
+              diff = fs.readFileSync('/tmp/snapshot.diff', 'utf-8');
+              if (diff.length > 60_000) diff = diff.slice(0, 60_000) + '\n... (truncated)';
+            } catch (err) {
+              diff = `(could not read snapshot diff: ${err.message})`;
+            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ⛽ Gas snapshot diff\n\nThis PR changes gas usage. Run \`bun run snapshot:contracts\` locally and commit the updated \`.gas-snapshot\`.\n\n\`\`\`\n${diff}\n\`\`\``,
+            });
+
+      - name: Fail job if snapshot diff present
+        if: steps.snapshot.outcome == 'failure'
+        run: exit 1
+
+  slither:
+    name: Slither static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-contracts]
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.4.2
+        id: slither
+        continue-on-error: true
+        with:
+          target: contracts/
+          slither-config: contracts/slither.config.json
+          fail-on: medium
+          slither-args: --filter-paths "lib/|test/|script/"
+          sarif: results.sarif
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+        continue-on-error: true
+
+      - name: Fail if Slither found medium+ issues
+        if: steps.slither.outcome == 'failure'
+        run: exit 1
+
+  fmt-check:
+    name: forge fmt --check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: forge fmt --check
+        working-directory: contracts
+        run: forge fmt --check
+
+  # ===================================================================
+  # Aggregate gate (referenced in branch protection)
+  # ===================================================================
+
+  all-checks:
+    name: All checks pass
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - lint
+      - typecheck
+      - test-typescript
+      - build-typescript
+      - build-contracts
+      - test-contracts
+      - slither
+      - fmt-check
+    steps:
+      - name: Verify all dependencies succeeded
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ]; then echo "lint failed"; exit 1; fi
+          if [ "${{ needs.typecheck.result }}" != "success" ]; then echo "typecheck failed"; exit 1; fi
+          if [ "${{ needs.test-typescript.result }}" != "success" ]; then echo "test-typescript failed"; exit 1; fi
+          if [ "${{ needs.build-typescript.result }}" != "success" ]; then echo "build-typescript failed"; exit 1; fi
+          if [ "${{ needs.build-contracts.result }}" != "success" ]; then echo "build-contracts failed"; exit 1; fi
+          if [ "${{ needs.test-contracts.result }}" != "success" ]; then echo "test-contracts failed"; exit 1; fi
+          if [ "${{ needs.slither.result }}" != "success" ]; then echo "slither failed"; exit 1; fi
+          if [ "${{ needs.fmt-check.result }}" != "success" ]; then echo "fmt-check failed"; exit 1; fi
+          echo "All checks passed ✓"

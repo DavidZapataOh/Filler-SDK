@@ -1,0 +1,51 @@
+name: Feature request
+description: Propose a new feature or enhancement
+title: '[Feature]: '
+labels: [enhancement]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, check if your idea overlaps with the
+        [`plans/`](https://github.com/filler-sdk/filler-sdk/tree/main/../plans)
+        directory in the parent repo, or with the published roadmap.
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: |
+        What are you trying to do? Who benefits?
+        Be concrete — "a vertical solver for X needs Y" is better than
+        "it would be nice if".
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: API shape, behavior, anything specific you'd like to see
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What did you try / consider before opening this issue?
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Component
+      multiple: true
+      options:
+        - SDK (`@filler-sdk/sdk`)
+        - Indexer (`@filler-sdk/jit-hints`)
+        - CLI (`create-filler`)
+        - Smart contracts
+        - Documentation
+        - Reference solver examples
+        - Demo dashboard
+    validations:
+      required: true

@@ -1,0 +1,74 @@
+version: 2
+
+updates:
+  # NPM dependencies in monorepo packages
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Etc/UTC'
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'
+      - 'npm'
+    groups:
+      typescript:
+        patterns:
+          - 'typescript'
+          - '@types/*'
+      viem-wagmi:
+        patterns:
+          - 'viem'
+          - 'wagmi'
+          - '@wagmi/*'
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+      lint-format:
+        patterns:
+          - '@biomejs/*'
+      build-tools:
+        patterns:
+          - 'tsup'
+          - 'typescript'
+      hono:
+        patterns:
+          - 'hono'
+          - '@hono/*'
+      changesets:
+        patterns:
+          - '@changesets/*'
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Etc/UTC'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'github-actions'
+    groups:
+      actions-core:
+        patterns:
+          - 'actions/*'
+      foundry:
+        patterns:
+          - 'foundry-rs/*'
+      crytic:
+        patterns:
+          - 'crytic/*'
+      codeql:
+        patterns:
+          - 'github/codeql-action'
+
+  # Foundry submodules — Dependabot does NOT manage forge-installed deps.
+  # Submodule updates are reviewed manually because v4-core, v4-periphery,
+  # UniswapX, and Permit2 require security review per update (see
+  # plans/FEEDBACK.md item V4-1 about the lack of semver discipline).
