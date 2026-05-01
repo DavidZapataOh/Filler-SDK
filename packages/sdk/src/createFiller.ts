@@ -57,6 +57,7 @@ import {
   type IndexerConfig,
   type Intent,
   type IntentFilter,
+  type IntentSourceLike,
   isIntentFilterPredicate,
   type KeeperHubConfig,
   type ResolvedFillerConfig,
@@ -127,6 +128,21 @@ const ChainIdSchema = z
     message: 'unsupported chainId; see chains registry',
   });
 
+// IntentSource is structural. Validation only checks the shape exists;
+// runtime contract is enforced by the engine when start() is called.
+const IntentSourceSchema = z.custom<IntentSourceLike>(
+  (val) => {
+    if (val === null || typeof val !== 'object') return false;
+    const v = val as Partial<IntentSourceLike>;
+    return (
+      typeof v.start === 'function' &&
+      typeof v.list === 'function' &&
+      typeof v.label === 'string'
+    );
+  },
+  { message: 'intentSource must be { start, list, label }' },
+);
+
 const FillerConfigSchema = z
   .object({
     chainId: ChainIdSchema,
@@ -135,6 +151,8 @@ const FillerConfigSchema = z
     addresses: AddressesPatchSchema.optional(),
     indexer: IndexerConfigSchema.optional(),
     keeperHub: KeeperHubConfigSchema.optional(),
+    intentSource: IntentSourceSchema.optional(),
+    intentQueueSize: z.number().int().positive().optional(),
     // Loggers are structural — Zod can't introspect methods cleanly. Accept
     // anything and trust the FillerLogger contract; bad shape fails at first call.
     logger: z.custom<FillerLogger>().optional(),
@@ -156,6 +174,8 @@ const PrivateKeyConfigSchema = z
     addresses: AddressesPatchSchema.optional(),
     indexer: IndexerConfigSchema.optional(),
     keeperHub: KeeperHubConfigSchema.optional(),
+    intentSource: IntentSourceSchema.optional(),
+    intentQueueSize: z.number().int().positive().optional(),
     logger: z.custom<FillerLogger>().optional(),
   })
   .strict();
@@ -173,6 +193,8 @@ export interface CreateFillerFromPrivateKeyConfig {
   addresses?: Partial<ChainContractAddresses>;
   indexer?: IndexerConfig;
   keeperHub?: KeeperHubConfig;
+  intentSource?: IntentSourceLike;
+  intentQueueSize?: number;
   logger?: FillerLogger;
 }
 
@@ -219,6 +241,8 @@ export function resolveFillerConfig(input: FillerConfig): ResolvedFillerConfig {
     addresses,
     indexer,
     keeperHub: config.keeperHub ?? null,
+    intentSource: config.intentSource ?? null,
+    intentQueueSize: config.intentQueueSize ?? 100,
     logger: (config.logger ?? defaultLogger) as FillerLogger,
   };
 }
@@ -297,6 +321,10 @@ export function createFillerFromPrivateKey(
     downstream.indexer = idx;
   }
   if (cfg.keeperHub !== undefined) downstream.keeperHub = cfg.keeperHub;
+  if (cfg.intentSource !== undefined) downstream.intentSource = cfg.intentSource;
+  if (cfg.intentQueueSize !== undefined) {
+    downstream.intentQueueSize = cfg.intentQueueSize;
+  }
   if (cfg.logger !== undefined) downstream.logger = cfg.logger;
 
   return createFiller(downstream);
@@ -323,11 +351,16 @@ function assembleFiller(config: ResolvedFillerConfig): Filler {
     logger: log,
   });
 
-  const intentStream = new IntentStream({
+  const intentStreamCfg: ConstructorParameters<typeof IntentStream>[0] = {
     publicClient: config.transport.publicClient,
     reactorAddress: config.addresses.reactor,
     logger: log,
-  });
+    maxQueueSize: config.intentQueueSize,
+  };
+  if (config.intentSource !== null) {
+    intentStreamCfg.source = config.intentSource;
+  }
+  const intentStream = new IntentStream(intentStreamCfg);
 
   const keeperHub =
     config.keeperHub === null

@@ -363,8 +363,37 @@ export interface FillerConfig {
    * routes through the hub's mempool-private path. Plan 08.
    */
   keeperHub?: KeeperHubConfig;
+  /**
+   * Optional intent source — pluggable transport for the IntentStream.
+   * Defaults to `null` ("no feed"); subscribers attach but receive nothing
+   * until a source is wired. Pass `createPollingIntentSource(...)` for
+   * production, `createMockIntentSource(...)` for tests, or implement your
+   * own. Plan 03.
+   */
+  intentSource?: IntentSourceLike;
+  /**
+   * Per-subscriber bounded queue size for the IntentStream's backpressure.
+   * Default 100. Drops are counted in `IntentStream.droppedTotal`.
+   */
+  intentQueueSize?: number;
   /** Optional logger; defaults to a Pino instance with sensible production defaults. */
   logger?: FillerLogger;
+}
+
+/**
+ * Structural shape of an IntentSource — types.ts mirrors the runtime contract
+ * in `intents/source.ts` so downstream consumers can author against it from
+ * the public types entry without a deep import.
+ */
+export interface IntentSourceLike {
+  start(sink: {
+    push(intent: Intent): Promise<void>;
+    hasSubscribers(): boolean;
+  }):
+    | Promise<() => Promise<void> | void>
+    | (() => Promise<void> | void);
+  list(filter?: IntentFilter): Promise<readonly Intent[]>;
+  readonly label: string;
 }
 
 /**
@@ -421,6 +450,8 @@ export interface ResolvedFillerConfig {
   addresses: ChainContractAddresses;
   indexer: Required<IndexerConfig>;
   keeperHub: KeeperHubConfig | null;
+  intentSource: IntentSourceLike | null;
+  intentQueueSize: number;
   logger: FillerLogger;
 }
 

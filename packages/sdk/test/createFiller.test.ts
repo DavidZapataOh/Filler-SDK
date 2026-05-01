@@ -100,8 +100,10 @@ describe('createFiller', () => {
     expect(typeof unsubscribe).toBe('function');
     unsubscribe();
 
-    // Plan 03 wires the log decoder.
-    await expect(filler.intents.list()).rejects.toBeInstanceOf(FillerError);
+    // Plan 03 ships the engine + sources; with no source wired, `list()`
+    // resolves to an empty array (a valid "no feed" state). Sourced behavior
+    // is covered by `intents/stream.test.ts`.
+    await expect(filler.intents.list()).resolves.toEqual([]);
 
     // Plan 04 wires execute / simulate.
     const stubIntent = { orderHash: '0x', deadline: 0n } as never;
