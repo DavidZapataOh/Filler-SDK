@@ -1,0 +1,24 @@
+{
+  "name": "create-filler",
+  "version": "0.0.0",
+  "description": "Scaffold a new Filler SDK solver in seconds",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-filler": "./dist/cli.js"
+  },
+  "files": ["dist", "templates"],
+  "scripts": {
+    "build": "echo 'cli build placeholder — implemented in Sprint 04'",
+    "test": "echo 'cli tests placeholder — implemented in Sprint 04'",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

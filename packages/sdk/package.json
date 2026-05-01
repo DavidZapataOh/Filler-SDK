@@ -1,0 +1,35 @@
+{
+  "name": "@filler-sdk/sdk",
+  "version": "0.0.0",
+  "description": "Deploy vertical UniswapX solvers in npm install",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "echo 'sdk build placeholder — implemented in Sprint 03'",
+    "test": "echo 'sdk tests placeholder — implemented in Sprint 03'",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "viem": "^2.21.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

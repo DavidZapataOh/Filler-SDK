@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Foundry
+out/
+cache/
+broadcast/
+contracts/lib/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Coverage
+coverage/
+*.lcov
+lcov.info
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+bun-debug.log*
+
+# OS
+Thumbs.db
+
+# Testing
+.nyc_output/
+
+# Vocs / Ponder
+docs/.vocs/
+.ponder/

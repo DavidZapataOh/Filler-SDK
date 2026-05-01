@@ -1,0 +1,30 @@
+{
+  "name": "@filler-sdk/jit-hints",
+  "version": "0.0.0",
+  "description": "JIT inventory hints indexer for Uniswap v4",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "echo 'jit-hints build placeholder — implemented in Sprint 02'",
+    "dev": "echo 'jit-hints dev placeholder — Ponder setup in Sprint 02'",
+    "test": "echo 'jit-hints tests placeholder — implemented in Sprint 02'",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .ponder"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

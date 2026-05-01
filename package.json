@@ -1,0 +1,36 @@
+{
+  "name": "filler-sdk-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Filler SDK — deploy vertical UniswapX solvers in npm install",
+  "license": "MIT",
+  "homepage": "https://filler-sdk.xyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/filler-sdk/filler-sdk.git"
+  },
+  "workspaces": ["packages/*", "examples/*", "apps/*"],
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "test": "bun run --filter '*' test",
+    "test:contracts": "cd contracts && forge test",
+    "lint": "biome check . && tsc --noEmit -p tsconfig.json",
+    "format": "biome format --write .",
+    "typecheck": "bun run --filter '*' typecheck",
+    "clean": "bun run --filter '*' clean && rm -rf node_modules",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "bun run build && changeset publish"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.27.10",
+    "@changesets/changelog-github": "^0.5.0",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.1.30"
+  },
+  "packageManager": "bun@1.1.30"
+}
