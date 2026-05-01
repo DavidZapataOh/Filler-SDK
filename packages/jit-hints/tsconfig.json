@@ -6,7 +6,13 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src/**/*", "abis/**/*", "ponder.config.ts", "ponder.schema.ts"],
+  "include": [
+    "src/**/*",
+    "abis/**/*",
+    "ponder.config.ts",
+    "ponder.schema.ts",
+    "ponder-env.d.ts"
+  ],
   "exclude": [
     "dist",
     "node_modules",
