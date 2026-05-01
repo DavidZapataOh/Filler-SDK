@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.1",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.12.16",
     "lru-cache": "^11.3.5",
     "pino": "^10.3.1",
