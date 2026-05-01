@@ -31,8 +31,10 @@
     "clean:contracts": "cd contracts && rm -rf out cache .gas-snapshot",
     "validate:contracts": "bash contracts/scripts/validate-setup.sh",
     "changeset": "changeset",
-    "version": "changeset version",
-    "release": "bun run build && changeset publish"
+    "changeset:status": "changeset status --verbose",
+    "version": "changeset version && bun install --lockfile-only",
+    "release": "bun run build && changeset publish",
+    "release:snapshot": "changeset version --snapshot canary && bun run build && changeset publish --tag canary"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
