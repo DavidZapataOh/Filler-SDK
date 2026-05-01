@@ -43,6 +43,14 @@ export interface JitHintsDb {
   findTicksForPool(poolId: `0x${string}`): Promise<DepthTick[]>;
   queryPools(q: PoolListQuery): Promise<PoolRow[]>;
   chainStatus(): Promise<ChainStatus[]>;
+  /**
+   * Latest indexed block for a chain, derived from the `pool` table's
+   * `max(updatedAt)`. Returns `null` when the chain has zero pool rows.
+   * Used by the indexer-lag monitor (Plan 08).
+   */
+  lastIndexedBlock(chainId: number): Promise<bigint | null>;
+  /** Total pool rows for a chain. Powers the `indexedPools` gauge. */
+  countPools(chainId: number): Promise<number>;
 }
 
 // =============================================================================
@@ -84,6 +92,17 @@ export function createMockDb(state: MockDbState): JitHintsDb {
     },
     async chainStatus() {
       return state.chainStatus ?? [];
+    },
+    async lastIndexedBlock(chainId) {
+      let max: bigint | null = null;
+      for (const p of state.pools) {
+        if (p.chainId !== chainId) continue;
+        if (max === null || p.updatedAt > max) max = p.updatedAt;
+      }
+      return max;
+    },
+    async countPools(chainId) {
+      return state.pools.filter((p) => p.chainId === chainId).length;
     },
   };
 }
@@ -149,6 +168,24 @@ export function createDrizzleDb(db: any, schema: DrizzleSchema): JitHintsDb {
       // real implementation when wiring the production server. Plan 08
       // (Observability) builds on this with a chain-tip checkpoint table.
       return [];
+    },
+    async lastIndexedBlock(chainId) {
+      const rows = (await db
+        .select()
+        .from(schema.pool)
+        .where(eq(schema.pool.chainId, chainId))) as PoolRow[];
+      let max: bigint | null = null;
+      for (const r of rows) {
+        if (max === null || r.updatedAt > max) max = r.updatedAt;
+      }
+      return max;
+    },
+    async countPools(chainId) {
+      const rows = (await db
+        .select()
+        .from(schema.pool)
+        .where(eq(schema.pool.chainId, chainId))) as PoolRow[];
+      return rows.length;
     },
   };
 }

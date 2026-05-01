@@ -66,8 +66,10 @@ describe('GET /depth', () => {
     await app.app.request(url);
     await app.app.request(url); // 2nd hit should come from cache
     const text = await app.metrics.registry.metrics();
-    expect(text).toMatch(/jit_hints_depth_cache_hits_total\{kind="hit"\} 1/);
-    expect(text).toMatch(/jit_hints_depth_cache_hits_total\{kind="miss"\} 1/);
+    // Match flexibly so default labels (service, version) added by the
+    // registry don't break the assertion as observability evolves.
+    expect(text).toMatch(/jit_hints_depth_cache_hits_total\{[^}]*kind="hit"[^}]*\} 1/);
+    expect(text).toMatch(/jit_hints_depth_cache_hits_total\{[^}]*kind="miss"[^}]*\} 1/);
   });
 
   test('different cache keys produce two misses', async () => {
@@ -78,6 +80,6 @@ describe('GET /depth', () => {
       `http://t/depth?pool=${POOL_A}&size=2000000&zeroForOne=true&slippageBps=50`,
     );
     const text = await app.metrics.registry.metrics();
-    expect(text).toMatch(/jit_hints_depth_cache_hits_total\{kind="miss"\} 2/);
+    expect(text).toMatch(/jit_hints_depth_cache_hits_total\{[^}]*kind="miss"[^}]*\} 2/);
   });
 });

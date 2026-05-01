@@ -1,5 +1,7 @@
 import { Counter, Gauge, Histogram, Registry } from 'prom-client';
 
+import { JIT_HINTS_VERSION } from '../index';
+
 /**
  * Prometheus metrics for the indexer's HTTP API. Each `createMetrics()` call
  * returns a fresh `Registry` so tests can assert against an isolated instance
@@ -37,6 +39,27 @@ export interface JitHintsMetrics {
    * blocks; anything past that may indicate a malicious chain split.
    */
   reorgEventsTotal: Counter<'chainId' | 'depthBucket'>;
+
+  /**
+   * Indexer events processed by chain × event-type. Bumped from the
+   * `eventsObserver` bridge that subscribes to the typed bus. `eventType`
+   * mirrors the event-bus channel ("Initialize" | "ModifyLiquidity" | "Swap"
+   * | "Donate") so dashboards can correlate to v4-core's contract event names.
+   */
+  eventsProcessed: Counter<'chainId' | 'eventType'>;
+
+  /**
+   * Number of pools the indexer has rows for, labelled by chain. Updated
+   * lazily from `indexerLagMonitor` (Plan 08) when it queries the DB.
+   */
+  indexedPools: Gauge<'chainId'>;
+
+  /**
+   * Indexer lag in seconds, labelled by chain. Lag = (chain tip block - latest
+   * indexed block) × per-chain block time. Populated by the indexer-lag
+   * monitor (`src/observability/indexerLag.ts`).
+   */
+  indexerLagSeconds: Histogram<'chainId'>;
 }
 
 /** Default histogram buckets, in seconds. Targeted at sub-100ms expected P99. */
@@ -44,8 +67,19 @@ const DEFAULT_BUCKETS = [
   0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5,
 ];
 
+/** Histogram buckets, in seconds, sized for indexer-lag observations. The
+ *  upper end (5 minutes) covers the slowest mainnet-style indexer pause we
+ *  expect to see; healthy pipelines stay under the 10 s bucket. */
+const LAG_BUCKETS = [0.1, 0.5, 1, 5, 10, 30, 60, 120, 300];
+
 export function createMetrics(): JitHintsMetrics {
   const registry = new Registry();
+  // Default labels stamp every metric with service identity so a single
+  // Prometheus / Grafana environment can host multiple deployments side-by-side.
+  registry.setDefaultLabels({
+    service: 'jit-hints',
+    version: JIT_HINTS_VERSION,
+  });
 
   const requestsTotal = new Counter({
     name: 'jit_hints_requests_total',
@@ -97,6 +131,28 @@ export function createMetrics(): JitHintsMetrics {
     registers: [registry],
   });
 
+  const eventsProcessed = new Counter({
+    name: 'jit_hints_events_processed_total',
+    help: 'Indexer events processed; `eventType` matches the v4-core ABI event name.',
+    labelNames: ['chainId', 'eventType'] as const,
+    registers: [registry],
+  });
+
+  const indexedPools = new Gauge({
+    name: 'jit_hints_indexed_pools',
+    help: 'Number of pools the indexer has rows for, per chain.',
+    labelNames: ['chainId'] as const,
+    registers: [registry],
+  });
+
+  const indexerLagSeconds = new Histogram({
+    name: 'jit_hints_indexer_lag_seconds',
+    help: 'Indexer lag (chain tip - latest indexed block, expressed in seconds).',
+    labelNames: ['chainId'] as const,
+    buckets: LAG_BUCKETS,
+    registers: [registry],
+  });
+
   return {
     registry,
     requestsTotal,
@@ -106,6 +162,9 @@ export function createMetrics(): JitHintsMetrics {
     sseEventsTotal,
     sseDroppedTotal,
     reorgEventsTotal,
+    eventsProcessed,
+    indexedPools,
+    indexerLagSeconds,
   };
 }
 
