@@ -1,0 +1,48 @@
+name: Halmos
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/src/**'
+      - 'contracts/test/halmos/**'
+      - 'contracts/halmos.toml'
+  schedule:
+    - cron: '0 10 * * 1' # Mondays 10:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: halmos-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  halmos:
+    name: Halmos symbolic execution
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        contract: [HalmosFillerAccess, HalmosBondInvariants]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Halmos
+        run: pip install halmos==0.3.3
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build (with AST)
+        working-directory: contracts
+        run: forge build --build-info
+
+      - name: Halmos — ${{ matrix.contract }}
+        working-directory: contracts
+        run: halmos --contract ${{ matrix.contract }}

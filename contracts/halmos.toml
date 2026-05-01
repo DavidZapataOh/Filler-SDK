@@ -1,0 +1,24 @@
+## Halmos symbolic-execution config.
+##
+## Run:
+##   halmos --contract HalmosFillerAccess
+##   halmos --contract HalmosBondInvariants
+##
+## Halmos auto-discovers `check_*` functions from the matched contracts.
+
+[global]
+## Per-assertion solver timeout (ms). Bond invariants run in <2s with the default;
+## raise if a check times out — never silence a `[TIMEOUT]` by widening `vm.assume`.
+solver-timeout-assertion = 60000
+
+## Symbolic-execution depth bound. Halmos's default works for our shallow single-tx
+## state transitions; we leave it implicit so each release of Halmos picks the right
+## value. Override only if a specific check times out.
+
+## Loop-unrolling bound. Filler.reactorCallback's inner loop is bounded by
+## `params.length` which we pass as a 0-length array in access tests; the bond
+## checks have no loops. 4 is safe.
+loop = 4
+
+## Storage layout — `generic` matches Solidity's default layout assumed by Halmos.
+storage-layout = "generic"
