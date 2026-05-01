@@ -141,12 +141,20 @@ contract FillerBond is Ownable {
     /// @dev Active stake is reduced immediately so a slash that lands during cooldown
     ///      cannot consume already-requested funds. v0 trade-off: stakers can race a
     ///      slash by front-running with `requestUnstake`. v1 (virtual shares) closes this.
+    ///
+    ///      Defensive cap: a slash decrements `totalStakedFor[filler]` without touching
+    ///      individual `stakes[filler][staker].amount`. Without this guard, a staker who
+    ///      attempts to unstake more than the post-slash pool size would underflow on
+    ///      `totalStakedFor[filler] -= amount` and revert with a generic `Panic(0x11)`.
+    ///      Capping by `totalStakedFor` makes that case revert cleanly with `NotEnoughStake`.
+    ///      v1 (virtual shares) eliminates the divergence entirely.
     function requestUnstake(
         address filler,
         uint256 amount
     ) external nonReentrant {
         StakeInfo storage info = stakes[filler][msg.sender];
         if (amount == 0 || info.amount < amount) revert NotEnoughStake();
+        if (amount > totalStakedFor[filler]) revert NotEnoughStake();
 
         info.amount -= amount;
         info.unstakeAmount += amount;

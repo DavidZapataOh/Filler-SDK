@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {IReactor} from "@uniswap/uniswapx/interfaces/IReactor.sol";
 import {IPoolManager} from "@uniswap/v4-core/interfaces/IPoolManager.sol";
 import {Currency} from "@uniswap/v4-core/types/Currency.sol";
-import {ResolvedOrder} from "@uniswap/uniswapx/base/ReactorStructs.sol";
+import {ResolvedOrder, SignedOrder} from "@uniswap/uniswapx/base/ReactorStructs.sol";
 
 import {Filler} from "../src/Filler.sol";
 import {FillParams} from "../src/libraries/FillParams.sol";
@@ -353,6 +353,74 @@ contract FillerTest is FillerTestBase {
         vm.prank(address(hostile));
         vm.expectRevert(Reentrancy.selector);
         reentrantFiller.reactorCallback(orders, abi.encode(params));
+    }
+
+    // ============ Solver entry points (F-3) ============
+
+    function test_execute_makesFillerTheFillContract() public {
+        _setupApprovalsBoth();
+        poolManager.setMockSwapDeltas(-int256(uint256(1 ether)), int256(uint256(0.99 ether)));
+        token1.mint(address(poolManager), 0.99 ether);
+        token0.mint(swapper, 1 ether);
+        vm.prank(swapper);
+        token0.approve(address(reactor), type(uint256).max);
+
+        // Build a ResolvedOrder, then encode it as the `order` bytes inside a SignedOrder
+        // (mock convention — real reactors decode the order bytes per order type).
+        ResolvedOrder memory ro = reactor.buildOrder(
+            swapper,
+            address(token0),
+            1 ether,
+            address(token1),
+            0.99 ether,
+            swapper,
+            block.timestamp + 1 days,
+            bytes32(uint256(0xE1))
+        );
+        SignedOrder memory signed = SignedOrder({order: abi.encode(ro), sig: ""});
+
+        FillParams[] memory params = new FillParams[](1);
+        params[0] = Fixtures.validParamsFor(c0, c1, 1 ether, 0.99 ether);
+
+        // Anyone can call execute — bot, swapper, anyone. The Filler is what reaches the reactor.
+        vm.prank(attacker);
+        filler.execute(signed, abi.encode(params));
+
+        assertEq(reactor.lastFillContract(), address(filler), "filler must be fillContract");
+        assertEq(reactor.executeWithCallbackCount(), 1);
+        assertEq(token1.balanceOf(swapper), 0.99 ether, "swapper received output");
+    }
+
+    function test_executeBatch_routesEachOrder() public {
+        _setupApprovalsBoth();
+        poolManager.setMockSwapDeltas(-int256(uint256(1 ether)), int256(uint256(0.99 ether)));
+        token1.mint(address(poolManager), 2 * 0.99 ether);
+        token0.mint(swapper, 2 ether);
+        vm.prank(swapper);
+        token0.approve(address(reactor), type(uint256).max);
+
+        SignedOrder[] memory signed = new SignedOrder[](2);
+        FillParams[] memory params = new FillParams[](2);
+        for (uint256 i; i < 2; ++i) {
+            ResolvedOrder memory ro = reactor.buildOrder(
+                swapper,
+                address(token0),
+                1 ether,
+                address(token1),
+                0.99 ether,
+                swapper,
+                block.timestamp + 1 days,
+                bytes32(uint256(0x200 + i))
+            );
+            signed[i] = SignedOrder({order: abi.encode(ro), sig: ""});
+            params[i] = Fixtures.validParamsFor(c0, c1, 1 ether, 0.99 ether);
+        }
+
+        filler.executeBatch(signed, abi.encode(params));
+
+        assertEq(reactor.lastFillContract(), address(filler));
+        assertEq(reactor.executeWithCallbackCount(), 1);
+        assertEq(token1.balanceOf(swapper), 2 * 0.99 ether);
     }
 
     // ============ View helpers ============

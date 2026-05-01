@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 
 import {IReactor} from "@uniswap/uniswapx/interfaces/IReactor.sol";
 import {IReactorCallback} from "@uniswap/uniswapx/interfaces/IReactorCallback.sol";
-import {ResolvedOrder} from "@uniswap/uniswapx/base/ReactorStructs.sol";
+import {ResolvedOrder, SignedOrder} from "@uniswap/uniswapx/base/ReactorStructs.sol";
 
 import {IPoolManager} from "@uniswap/v4-core/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "@uniswap/v4-core/interfaces/callback/IUnlockCallback.sol";
@@ -168,6 +168,36 @@ contract Filler is IReactorCallback, IUnlockCallback, Ownable {
         emit ApprovalsConfigured(len);
     }
 
+    // ============ Solver entry points ============
+
+    /// @notice Execute a single signed order through the configured Reactor.
+    /// @dev Solver bots call this method instead of `Reactor.executeWithCallback` directly,
+    ///      so that `msg.sender` to the reactor is THIS contract — making the Filler the
+    ///      `fillContract` per UniswapX v2.1 semantics. The reactor will then call back into
+    ///      `Filler.reactorCallback` with the resolved order. `msg.value` is forwarded so
+    ///      reactors that require an ETH bond on execute (e.g., V2DutchOrderReactor protocol
+    ///      fees) keep working.
+    /// @param order The signed UniswapX order to fill.
+    /// @param callbackData ABI-encoded `FillParams[]` of length 1 — passed unchanged to the
+    ///        reactor and back into `reactorCallback`.
+    function execute(
+        SignedOrder calldata order,
+        bytes calldata callbackData
+    ) external payable {
+        REACTOR.executeWithCallback{value: msg.value}(order, callbackData);
+    }
+
+    /// @notice Execute a batch of signed orders. Reactor receives all of them and calls
+    ///         this filler's `reactorCallback` once with the full resolved batch.
+    /// @param orders The signed UniswapX orders to fill.
+    /// @param callbackData ABI-encoded `FillParams[]` matching `orders` length.
+    function executeBatch(
+        SignedOrder[] calldata orders,
+        bytes calldata callbackData
+    ) external payable {
+        REACTOR.executeBatchWithCallback{value: msg.value}(orders, callbackData);
+    }
+
     // ============ Reactor callback ============
 
     /// @notice Called by UniswapX Reactor after transferring input tokens to this filler.
@@ -198,6 +228,9 @@ contract Filler is IReactorCallback, IUnlockCallback, Ownable {
         if (!allowedCurrencies[p.outputCurrency]) revert UnsupportedCurrency(p.outputCurrency);
 
         // Atomic JIT: nested unlock callback executes add → swap → remove → settle.
+        // unlock returns the bytes returned by unlockCallback, which we always set to "" —
+        // discard.
+        // slither-disable-next-line unused-return
         POOL_MANAGER.unlock(abi.encode(p));
 
         emit Filled(
@@ -239,7 +272,8 @@ contract Filler is IReactorCallback, IUnlockCallback, Ownable {
             salt: bytes32(uint256(uint160(address(this))))
         });
 
-        // Returns (callerDelta, feesAccrued) — both flow through PoolManager's delta accounting.
+        // Returns (callerDelta, feesAccrued) — flow through PoolManager's delta accounting.
+        // slither-disable-next-line unused-return
         POOL_MANAGER.modifyLiquidity(p.poolKey, params, "");
     }
 
@@ -268,6 +302,7 @@ contract Filler is IReactorCallback, IUnlockCallback, Ownable {
             salt: bytes32(uint256(uint160(address(this))))
         });
 
+        // slither-disable-next-line unused-return
         POOL_MANAGER.modifyLiquidity(p.poolKey, params, "");
     }
 

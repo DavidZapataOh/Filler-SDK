@@ -1,0 +1,65 @@
+name: Mythril
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/src/**'
+      - 'contracts/mythril.json'
+  schedule:
+    - cron: '0 8 * * 1' # Mondays 08:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mythril-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  analyze:
+    name: Mythril symbolic execution
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        contract: [Filler, FillerBond]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Mythril
+        run: pip install mythril==0.24.8
+
+      - name: Analyze ${{ matrix.contract }}.sol
+        working-directory: contracts
+        run: |
+          myth analyze src/${{ matrix.contract }}.sol \
+            --solv 0.8.30 \
+            --solc-json mythril.json \
+            --execution-timeout 600 \
+            --create-timeout 60 \
+            --max-depth 64 \
+            -o json > mythril-${{ matrix.contract }}.json || true
+          # Mythril returns non-zero on findings; we triage via the JSON output below.
+          cat mythril-${{ matrix.contract }}.json
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mythril-${{ matrix.contract }}
+          path: contracts/mythril-${{ matrix.contract }}.json
+
+      - name: Fail on high-severity findings
+        working-directory: contracts
+        run: |
+          if grep -q '"severity": "High"' mythril-${{ matrix.contract }}.json 2>/dev/null; then
+            echo "Mythril found High-severity issues in ${{ matrix.contract }}.sol"
+            exit 1
+          fi

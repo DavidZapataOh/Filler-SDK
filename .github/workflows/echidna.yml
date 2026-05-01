@@ -1,0 +1,50 @@
+name: Echidna
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/src/**'
+      - 'contracts/test/echidna/**'
+      - 'contracts/echidna.yaml'
+  schedule:
+    - cron: '0 9 * * 1' # Mondays 09:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: echidna-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  echidna:
+    name: Echidna property tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build contracts
+        working-directory: contracts
+        run: forge build
+
+      - name: Run Echidna (1M sequences)
+        uses: crytic/echidna-action@v2
+        with:
+          files: contracts/test/echidna/EchidnaFiller.sol
+          contract: EchidnaBond
+          config: contracts/echidna.yaml
+          test-limit: 1000000
+          solc-version: 0.8.30
+
+      - name: Upload corpus
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: echidna-corpus
+          path: contracts/test/echidna/corpus
+          if-no-files-found: ignore

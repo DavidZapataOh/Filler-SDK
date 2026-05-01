@@ -48,11 +48,14 @@ library DeltaSettler {
             uint256 amount = uint256(-delta);
             if (currency.isAddressZero()) {
                 // Native ETH path: amount determined by msg.value; sync is not required.
+                // settle returns `paid` — checked indirectly via the caller's _assertDeltasZero.
+                // slither-disable-next-line unused-return
                 poolManager.settle{value: amount}();
             } else {
                 // ERC20 path: sync reserves, push tokens to manager, then settle.
                 poolManager.sync(currency);
                 currency.transfer(address(poolManager), amount);
+                // slither-disable-next-line unused-return
                 poolManager.settle();
             }
         } else if (delta > 0) {

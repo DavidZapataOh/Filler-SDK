@@ -116,6 +116,34 @@ contract FillerBondTest is BondTestBase {
         bond.requestUnstake(fillerAddr, 2 ether);
     }
 
+    /// @dev Regression for FEEDBACK F-2: post-slash, a staker whose individual
+    ///      `stakes[f][s].amount` exceeds the post-slash `totalStakedFor[f]` previously
+    ///      panicked on the underflow. With the defensive cap, the call reverts cleanly
+    ///      with `NotEnoughStake`.
+    function test_requestUnstake_revertsCleanlyAfterMultiStakerSlash() public {
+        // Two stakers contribute 5 ether each; pool active = 10.
+        _stake(staker, fillerAddr, 5 ether);
+        _stake(other, fillerAddr, 5 ether);
+
+        // Slash 4 of the 10 active. Pool drops to 6; individual stakes still show 5 each.
+        bond.slash(fillerAddr, 4 ether, keccak256("post-slash-cap"));
+
+        // First staker requests their full 5 ether — pool has only 6 left, this fits.
+        vm.prank(staker);
+        bond.requestUnstake(fillerAddr, 5 ether);
+        // Pool now 1 ether; second staker still shows 5 ether of individual stake.
+
+        // Second staker requesting 5 would underflow the pool — must revert with NotEnoughStake.
+        vm.prank(other);
+        vm.expectRevert(NotEnoughStake.selector);
+        bond.requestUnstake(fillerAddr, 5 ether);
+
+        // The defensive cap allows the second staker to recover what's left (1 ether).
+        vm.prank(other);
+        bond.requestUnstake(fillerAddr, 1 ether);
+        assertEq(bond.totalStakedFor(fillerAddr), 0);
+    }
+
     function test_withdraw_revertsBeforeCooldown() public {
         _stake(staker, fillerAddr, 5 ether);
         vm.prank(staker);

@@ -6,7 +6,7 @@ import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 
 import {Currency} from "@uniswap/v4-core/types/Currency.sol";
-import {ResolvedOrder} from "@uniswap/uniswapx/base/ReactorStructs.sol";
+import {ResolvedOrder, SignedOrder} from "@uniswap/uniswapx/base/ReactorStructs.sol";
 
 import {Filler} from "../../../src/Filler.sol";
 import {FillParams} from "../../../src/libraries/FillParams.sol";
@@ -61,13 +61,8 @@ contract FillerHandler is CommonBase, StdCheats, StdUtils {
 
     // ============ Actions ============
 
-    /// @notice Execute one full fill cycle. After this returns successfully the filler is
-    ///         drained of tokens.
-    /// @dev v2.1 UniswapX semantics: `msg.sender` to the reactor IS the `fillContract`.
-    ///      So we `vm.prank(address(FILLER))` to make the reactor treat the filler as
-    ///      the fillContract — the natural production posture is a `Filler.execute(...)`
-    ///      method that calls `reactor.executeWithCallback(...)` from inside the contract,
-    ///      but v0 doesn't ship that entrypoint yet (see Plan 05 progress §3).
+    /// @notice Execute one full fill cycle through `Filler.execute(...)` — the production
+    ///         entrypoint. After a successful fill the filler is drained of tokens.
     function executeFill(
         uint256 nonce
     ) external {
@@ -78,8 +73,7 @@ contract FillerHandler is CommonBase, StdCheats, StdUtils {
         vm.prank(swapper);
         TOKEN0.approve(address(REACTOR), INPUT_AMOUNT);
 
-        ResolvedOrder[] memory orders = new ResolvedOrder[](1);
-        orders[0] = REACTOR.buildOrder(
+        ResolvedOrder memory ro = REACTOR.buildOrder(
             swapper,
             address(TOKEN0),
             INPUT_AMOUNT,
@@ -89,12 +83,12 @@ contract FillerHandler is CommonBase, StdCheats, StdUtils {
             block.timestamp + 1 days,
             keccak256(abi.encode("fill", nonce))
         );
+        SignedOrder memory signed = SignedOrder({order: abi.encode(ro), sig: ""});
 
         FillParams[] memory params = new FillParams[](1);
         params[0] = Fixtures.validParamsFor(C0, C1, INPUT_AMOUNT, OUTPUT_AMOUNT);
 
-        vm.prank(address(FILLER));
-        REACTOR.executeResolvedBatch(orders, abi.encode(params));
+        FILLER.execute(signed, abi.encode(params));
 
         successfulFills += 1;
     }
