@@ -24,6 +24,7 @@ fs_permissions = [
   { access = "read", path = "./" },
   { access = "read-write", path = "./deployments" },
   { access = "write", path = "./snapshots" },
+  { access = "write", path = "../packages/jit-hints/test/fixtures" },
 ]
 
 # Default fuzz/invariant tuning (dev mode)
