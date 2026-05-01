@@ -1,0 +1,159 @@
+name: Docker — JIT Hints
+
+# =============================================================================
+#  Build, scan, and (on main) publish the @filler-sdk/jit-hints image to GHCR.
+#
+#  - PRs run a build (load=true, no push) + Trivy scan to gate merge.
+#  - Pushes to `main` and version tags push multi-arch images to GHCR.
+#  - Trivy SARIF is uploaded to GitHub's Security tab on every run.
+#
+#  Path filter: only triggers when the package or this workflow itself
+#  changes — keeps PR signal tight.
+# =============================================================================
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'packages/jit-hints/**'
+      - '.github/workflows/docker-jit-hints.yml'
+      - 'package.json'
+      - 'bun.lock'
+  pull_request:
+    paths:
+      - 'packages/jit-hints/**'
+      - '.github/workflows/docker-jit-hints.yml'
+      - 'package.json'
+      - 'bun.lock'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/jit-hints
+
+concurrency:
+  group: docker-jit-hints-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-and-scan:
+    name: Build + scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=jit-hints
+            org.opencontainers.image.description=Filler SDK — JIT inventory hints indexer for Uniswap v4
+            org.opencontainers.image.licenses=MIT
+
+      # PRs build a single-arch image we can hand straight to Trivy. Push
+      # builds go multi-arch; we still produce a separate amd64-only build
+      # for the scanner because Trivy needs a daemon-loaded image.
+      - name: Build (PR — load only, no push)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: packages/jit-hints/Dockerfile
+          push: false
+          load: true
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=jit-hints
+          cache-to: type=gha,scope=jit-hints,mode=max
+
+      - name: Build (push — multi-arch + push)
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: packages/jit-hints/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=jit-hints
+          cache-to: type=gha,scope=jit-hints,mode=max
+          provenance: true
+          sbom: true
+
+      - name: Build amd64 image for Trivy (push event)
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: packages/jit-hints/Dockerfile
+          push: false
+          load: true
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=jit-hints
+
+      - name: Trivy vulnerability scan (HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-jit-hints
+
+      - name: Image size sanity check
+        if: always()
+        run: |
+          set -e
+          docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan --format '{{.Size}}' || true
+          # Soft cap: warn (don't fail) if the image grows past 300 MB.
+          # Acceptance criterion is < 200 MB; flagging early lets us catch
+          # accidental devDependency leaks into the runtime stage.
+          SIZE_BYTES=$(docker image inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:scan --format='{{.Size}}' || echo 0)
+          echo "Image size: ${SIZE_BYTES} bytes"
+          MAX=$((300 * 1024 * 1024))
+          if [ "${SIZE_BYTES}" -gt "${MAX}" ]; then
+            echo "::warning::Image exceeds 300MB soft cap (got ${SIZE_BYTES} bytes)"
+          fi

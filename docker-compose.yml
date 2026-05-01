@@ -1,0 +1,172 @@
+# =============================================================================
+#  filler-sdk — local development stack
+#
+#  Brings up the JIT-hints HTTP API + the Ponder indexer + Postgres. The two
+#  app containers share the same image (built once via the API service) and
+#  the same `DATABASE_URL`; the indexer container overrides CMD to run
+#  `ponder start` instead of the API server.
+#
+#  Two profiles:
+#
+#    (default)            api + indexer + postgres
+#    --profile observability   adds prometheus + grafana
+#
+#  Usage:
+#    docker compose up -d                           # API + indexer + DB
+#    docker compose --profile observability up -d   # + prometheus/grafana
+#    docker compose down -v                         # stop + drop volumes
+#
+#  The image name is hard-coded so both services share build cache.
+# =============================================================================
+
+x-jit-hints-image: &jit_hints_image filler-sdk/jit-hints:dev
+
+x-jit-hints-build: &jit_hints_build
+  context: .
+  dockerfile: packages/jit-hints/Dockerfile
+
+services:
+  # ---------------------------------------------------------------------------
+  # HTTP API — serves /depth, /depth/stream, /metrics, /health.
+  # ---------------------------------------------------------------------------
+  jit-hints-api:
+    build: *jit_hints_build
+    image: *jit_hints_image
+    container_name: jit-hints-api
+    ports:
+      - "42069:42069"
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: "42069"
+      HOST: 0.0.0.0
+      DATABASE_URL: postgres://app:app@postgres:5432/jit_hints
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:42069/health > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Indexer — runs `ponder start` to populate Postgres. Same image as the API.
+  # ---------------------------------------------------------------------------
+  jit-hints-indexer:
+    image: *jit_hints_image
+    # Re-uses the API's image build, but ensures it exists if the API service
+    # hasn't been built yet.
+    build: *jit_hints_build
+    container_name: jit-hints-indexer
+    command: ["bun", "run", "start:indexer"]
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://app:app@postgres:5432/jit_hints
+      # RPC endpoints — fall back to public nodes if unset (rate-limited; do
+      # NOT use for production). Values come from the parent shell or `.env`.
+      UNICHAIN_RPC_URL: ${UNICHAIN_RPC_URL:-}
+      UNICHAIN_WSS_URL: ${UNICHAIN_WSS_URL:-}
+      MAINNET_RPC_URL: ${MAINNET_RPC_URL:-}
+      MAINNET_WSS_URL: ${MAINNET_WSS_URL:-}
+      BASE_RPC_URL: ${BASE_RPC_URL:-}
+      BASE_WSS_URL: ${BASE_WSS_URL:-}
+      ARBITRUM_RPC_URL: ${ARBITRUM_RPC_URL:-}
+      ARBITRUM_WSS_URL: ${ARBITRUM_WSS_URL:-}
+      OPTIMISM_RPC_URL: ${OPTIMISM_RPC_URL:-}
+      OPTIMISM_WSS_URL: ${OPTIMISM_WSS_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+
+  # ---------------------------------------------------------------------------
+  # Postgres — durable store for indexer state + API reads.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: jit-hints-postgres
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: jit_hints
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d jit_hints"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — scrapes /metrics from the API. Behind `observability` profile.
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: jit-hints-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    ports:
+      - "9091:9090"
+    profiles: ["observability"]
+    restart: unless-stopped
+    depends_on:
+      - jit-hints-api
+
+  # ---------------------------------------------------------------------------
+  # Grafana — dashboard UI. Behind `observability` profile.
+  # Default login: admin / admin (change immediately for any non-local use).
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: jit-hints-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    profiles: ["observability"]
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:

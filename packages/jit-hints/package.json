@@ -16,7 +16,8 @@
   "scripts": {
     "abi:gen": "bun run scripts/gen-abis.ts",
     "dev": "ponder dev",
-    "start": "ponder start",
+    "start": "bun run src/server.ts",
+    "start:indexer": "ponder start",
     "build": "echo 'jit-hints build placeholder — bundling lands in Sprint 03 alongside SDK consumers'",
     "test": "vitest run",
     "test:watch": "vitest",
