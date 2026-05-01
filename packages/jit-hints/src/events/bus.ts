@@ -32,6 +32,24 @@ export type PoolEvents = {
     amount0: bigint;
     amount1: bigint;
   };
+  /**
+   * A reorg was detected on `chainId` and the indexer has rolled back state
+   * from `fromBlock` to the common ancestor at `toBlock` (`fromBlock > toBlock`).
+   * Subscribers (SSE, dashboards) should treat this as an instruction to
+   * refresh any cached pool state — Ponder has already reverted the DB.
+   *
+   * NOTE: in v0 nothing inside the indexer actually emits this event yet —
+   * Ponder 0.16 doesn't expose a public reorg hook. The wiring is in place so
+   * a future Ponder release (or an operator-side chain-tip watcher) can fan it
+   * out without touching the SSE or metrics layers. See Plan 07 progress §3
+   * for the upstream-gap honest disclosure.
+   */
+  'pool:reorg': {
+    chainId: number;
+    fromBlock: bigint;
+    toBlock: bigint;
+    depth: number;
+  };
 };
 
 export type PoolEventName = keyof PoolEvents;

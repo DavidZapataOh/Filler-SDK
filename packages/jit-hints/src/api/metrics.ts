@@ -29,6 +29,14 @@ export interface JitHintsMetrics {
 
   /** SSE events dropped before write, labelled by endpoint + reason. */
   sseDroppedTotal: Counter<'endpoint' | 'reason'>;
+
+  /**
+   * Reorgs observed by the indexer, labelled by chain + bucketed depth.
+   * Bucket strategy: `1-3 | 4-7 | 8-12 | >12`. The `>12` bucket is
+   * operationally significant because Ponder's default finality is 12
+   * blocks; anything past that may indicate a malicious chain split.
+   */
+  reorgEventsTotal: Counter<'chainId' | 'depthBucket'>;
 }
 
 /** Default histogram buckets, in seconds. Targeted at sub-100ms expected P99. */
@@ -82,6 +90,13 @@ export function createMetrics(): JitHintsMetrics {
     registers: [registry],
   });
 
+  const reorgEventsTotal = new Counter({
+    name: 'jit_hints_reorg_events_total',
+    help: 'Reorgs observed by the indexer; `depthBucket` is "1-3" | "4-7" | "8-12" | ">12".',
+    labelNames: ['chainId', 'depthBucket'] as const,
+    registers: [registry],
+  });
+
   return {
     registry,
     requestsTotal,
@@ -90,5 +105,19 @@ export function createMetrics(): JitHintsMetrics {
     sseActiveConnections,
     sseEventsTotal,
     sseDroppedTotal,
+    reorgEventsTotal,
   };
+}
+
+/**
+ * Reorg-depth bucket — kept here so the bridge in `reorgObserver.ts` and the
+ * tests share the exact same partition. Aligned with Ponder's default
+ * finality-after-12-blocks semantics.
+ */
+export function reorgDepthBucket(depth: number): '1-3' | '4-7' | '8-12' | '>12' {
+  if (depth <= 0) return '1-3'; // defensive: treat 0/negative as smallest bucket
+  if (depth <= 3) return '1-3';
+  if (depth <= 7) return '4-7';
+  if (depth <= 12) return '8-12';
+  return '>12';
 }

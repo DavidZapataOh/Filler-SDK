@@ -135,6 +135,40 @@ export function createDepthStreamRoute(deps: DepthStreamRouteDeps): Hono {
         }
       };
 
+      /**
+       * Reorg refresh handler. A reorg invalidates everything we've shown the
+       * client; we recompute + emit IMMEDIATELY (bypassing the throttle) so the
+       * post-reorg corrected state reaches the client without waiting for the
+       * next swap. Filters by chainId so a reorg on a different chain doesn't
+       * trigger a no-op recompute.
+       */
+      const onReorgEvent = async (data: { chainId: number }) => {
+        if (aborted || !snapshotDone) return;
+        try {
+          const updated = await computeAndSerialize();
+          if (updated === null) return;
+          // The pool itself confirms which chain it's on; if the reorg was on a
+          // different chain, our recompute returns the same payload — harmless
+          // but skippable. We use the pool's chainId to gate the write.
+          const poolRow = await deps.db.findPool(poolId);
+          if (poolRow === null || poolRow.chainId !== data.chainId) return;
+          await stream.writeSSE({
+            event: 'depth',
+            data: JSON.stringify(updated),
+          });
+          lastEmit = now();
+          deps.metrics.sseEventsTotal.inc({
+            endpoint: ENDPOINT_LABEL,
+            type: 'reorg-refresh',
+          });
+        } catch {
+          deps.metrics.sseDroppedTotal.inc({
+            endpoint: ENDPOINT_LABEL,
+            reason: 'update_failed',
+          });
+        }
+      };
+
       // Subscribe to pool events FIRST so events fired between the snapshot
       // computation and listener wire-up aren't lost. The `snapshotDone` flag
       // guards `onPoolEvent` from racing with the in-flight snapshot writeSSE
@@ -142,6 +176,7 @@ export function createDepthStreamRoute(deps: DepthStreamRouteDeps): Hono {
       // current state, and any subsequent event will trigger a fresh update).
       deps.eventBus.on('pool:swap', onPoolEvent);
       deps.eventBus.on('pool:liquidity-changed', onPoolEvent);
+      deps.eventBus.on('pool:reorg', onReorgEvent);
 
       // Initial snapshot. If the pool isn't indexed, surface that to the client
       // and bail before doing anything else.
@@ -154,6 +189,7 @@ export function createDepthStreamRoute(deps: DepthStreamRouteDeps): Hono {
           });
           deps.eventBus.off('pool:swap', onPoolEvent);
           deps.eventBus.off('pool:liquidity-changed', onPoolEvent);
+          deps.eventBus.off('pool:reorg', onReorgEvent);
           deps.metrics.sseActiveConnections.dec({ endpoint: ENDPOINT_LABEL });
           activeConnections -= 1;
           return;
@@ -172,6 +208,7 @@ export function createDepthStreamRoute(deps: DepthStreamRouteDeps): Hono {
         });
         deps.eventBus.off('pool:swap', onPoolEvent);
         deps.eventBus.off('pool:liquidity-changed', onPoolEvent);
+        deps.eventBus.off('pool:reorg', onReorgEvent);
         deps.metrics.sseActiveConnections.dec({ endpoint: ENDPOINT_LABEL });
         activeConnections -= 1;
         return;
@@ -208,6 +245,7 @@ export function createDepthStreamRoute(deps: DepthStreamRouteDeps): Hono {
       clearInterval(heartbeat);
       deps.eventBus.off('pool:swap', onPoolEvent);
       deps.eventBus.off('pool:liquidity-changed', onPoolEvent);
+      deps.eventBus.off('pool:reorg', onReorgEvent);
       deps.metrics.sseActiveConnections.dec({ endpoint: ENDPOINT_LABEL });
       activeConnections -= 1;
     });

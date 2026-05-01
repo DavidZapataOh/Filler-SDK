@@ -8,6 +8,7 @@ import type { JitHintsDb } from './db';
 import { type JitHintsMetrics, createMetrics } from './metrics';
 import { createLoggingMiddleware } from './middleware/logging';
 import { type RateLimiter, createRateLimiter } from './middleware/rateLimit';
+import { type ReorgObserver, createReorgObserver } from './reorgObserver';
 import { createDepthRoute } from './routes/depth';
 import { createDepthStreamRoute } from './routes/depthStream';
 import { createHealthRoute } from './routes/health';
@@ -45,6 +46,8 @@ export interface JitHintsApp {
   metrics: JitHintsMetrics;
   rateLimiter: RateLimiter;
   eventBus: TypedEventBus<PoolEvents>;
+  /** Bridge that bumps `reorgEventsTotal` whenever a `pool:reorg` is observed. */
+  reorgObserver: ReorgObserver;
 }
 
 /**
@@ -63,6 +66,8 @@ export function createApp(opts: AppOptions): JitHintsApp {
     rps: opts.rateLimit?.rps ?? 100,
     burst: opts.rateLimit?.burst ?? 50,
   });
+
+  const reorgObserver = createReorgObserver(eventBus, metrics);
 
   const app = new Hono();
 
@@ -122,7 +127,7 @@ export function createApp(opts: AppOptions): JitHintsApp {
     return c.json({ error: 'Internal server error' }, 500);
   });
 
-  return { app, metrics, rateLimiter, eventBus };
+  return { app, metrics, rateLimiter, eventBus, reorgObserver };
 }
 
 function noopLogger(): Pick<Logger, 'info' | 'error'> {
