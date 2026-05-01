@@ -22,9 +22,22 @@ library Fixtures {
     /// @notice Returns a well-formed `FillParams` for the canonical TOKEN0 → TOKEN1 swap.
     /// @dev `deadline` is 1 day after `block.timestamp`; tests can override to test edge cases.
     function validParams() internal view returns (FillParams memory p) {
-        Currency c0 = Currency.wrap(TOKEN0_ADDR);
-        Currency c1 = Currency.wrap(TOKEN1_ADDR);
+        return
+            validParamsFor(
+                Currency.wrap(TOKEN0_ADDR), Currency.wrap(TOKEN1_ADDR), 1 ether, 0.99 ether
+            );
+    }
 
+    /// @notice Returns a well-formed `FillParams` parameterized by currencies and amounts.
+    /// @dev Direction defaults to `zeroForOne = true` (input = c0, output = c1).
+    ///      Caller MUST pass currencies in canonical order (`Currency.unwrap(c0) <
+    /// Currency.unwrap(c1)`).
+    function validParamsFor(
+        Currency c0,
+        Currency c1,
+        uint256 inputAmount,
+        uint256 outputAmount
+    ) internal view returns (FillParams memory p) {
         p = FillParams({
             poolKey: PoolKey({
                 currency0: c0,
@@ -35,8 +48,8 @@ library Fixtures {
             }),
             inputCurrency: c0,
             outputCurrency: c1,
-            inputAmount: 1 ether,
-            outputAmount: 0.99 ether,
+            inputAmount: inputAmount,
+            outputAmount: outputAmount,
             zeroForOne: true,
             tickLower: TICK_LOWER,
             tickUpper: TICK_UPPER,
@@ -44,5 +57,19 @@ library Fixtures {
             feesCaptured: 0,
             deadline: block.timestamp + 1 days
         });
+    }
+
+    /// @notice Returns a `FillParams` with `zeroForOne = false` (currencies flipped to match).
+    function validParamsOneForZero(
+        Currency c0,
+        Currency c1,
+        uint256 inputAmount,
+        uint256 outputAmount
+    ) internal view returns (FillParams memory p) {
+        p = validParamsFor(c0, c1, inputAmount, outputAmount);
+        p.zeroForOne = false;
+        // For oneForZero, input is c1 and output is c0.
+        p.inputCurrency = c1;
+        p.outputCurrency = c0;
     }
 }
