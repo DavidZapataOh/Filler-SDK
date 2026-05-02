@@ -1,14 +1,20 @@
 # Quickstart
 
-Get a UniswapX solver running on a mainnet fork in under 5 minutes.
+Get a UniswapX fill on chain in **under 5 minutes**, end-to-end. Real Reactor + real Permit2 + real v4 PoolManager + real ERC20s, against an Ethereum mainnet fork.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) ≥ 1.1.30
-- [Foundry](https://book.getfoundry.sh) (`anvil` + `cast` + `forge`)
-- ~5 minutes
+- [Bun](https://bun.sh) ≥ 1.1.30 (`curl -fsSL https://bun.sh/install | bash`)
+- [Foundry](https://book.getfoundry.sh) — `anvil`, `cast`, `forge` (`curl -L https://foundry.paradigm.xyz | bash && foundryup`)
+- A public Ethereum RPC URL (the default `https://ethereum.publicnode.com` works for the demo)
 
-## Install
+No testnet faucet, no API keys, no funded wallets needed. The orchestrator funds wallets via `anvil_setStorageAt` and inherits real Uniswap state from the fork.
+
+:::tip[Why mainnet fork instead of testnet?]
+UniswapX has **zero testnet deployments** (verified across Sepolia, Unichain Sepolia, Base Sepolia, Arbitrum Sepolia — see [F-57 in FEEDBACK.md](/resources/feedback)). Mainnet fork is the canonical demo path: real Uniswap contracts, real protocol, deterministic via anvil.
+:::
+
+## 1. Clone + install
 
 ```bash
 git clone https://github.com/filler-sdk/filler-sdk
@@ -16,34 +22,203 @@ cd filler-sdk
 bun install
 ```
 
-## Run the end-to-end smoke test
+Expected: `915 packages installed [5.66s]`. The workspace links every package — `apps/dashboard`, `examples/treasury-rebalance`, `packages/sdk`, etc.
+
+## 2. Run the end-to-end smoke test
 
 ```bash
 bun run e2e:fork
 ```
 
-This brings up an anvil mainnet fork, deploys Filler/FillerBond at deterministic addresses, initializes a USDC/WETH 0.05% v4 pool, seeds it with $10K of liquidity, stakes a bond, and submits an intent — all in ~25 seconds.
+This single command does **everything**:
+
+1. Spawns anvil mainnet fork at the latest block
+2. Deploys `Filler.sol` + `FillerBond.sol` at deterministic CREATE addresses
+3. Configures approvals (USDC + WETH whitelist)
+4. Initializes a v4 USDC/WETH 0.05% pool at the current mainnet v3 reference price
+5. Deploys + funds a `PoolSeeder` helper
+6. Seeds the pool with 10,000 USDC + 5 WETH of liquidity
+7. Funds swapper + solver fresh keys (1 ETH each, +4000 USDC for swapper, +1 WETH inventory for the Filler)
+8. Stakes 0.1 ETH bond from the solver wallet
+9. Submits a UniswapX intent (100 USDC → ~0.043 WETH) with real cosignature + real FillParams
+10. Verifies the on-chain `Filled` event + USDC/WETH transfers
 
 Expected output:
 
 ```
-✓ E2E PASS in 25.5s. Filler.execute success: 0x161127…ae5300d
+→ Bringing up anvil fork
+  ✓ fork up at block 25010080
+→ Deploying Filler + FillerBond
+  ✓ Filler at 0xC489d11D03B2999A6ba568e02E0b95eFc58b6A34
+  ✓ FillerBond at 0x559Bb2F2beb43246bA63057F3750b742b92dBBf9
+→ Configuring Filler approvals (USDC + WETH whitelist)
+  ✓ approvals configured
+→ Initializing v4 USDC/WETH pool + deploying seeder
+  ✓ pool already initialized — proceeding with mainnet state
+  ✓ PoolSeeder deployed
+→ Funding seeder + adding LP liquidity
+  ✓ liquidity seeded: ticks [197860, 199860]
+→ Funding swapper + solver + Filler inventory
+  ✓ swapper: 1 ETH + 4000 USDC
+  ✓ Filler: 1 WETH inventory (for JIT)
+→ Staking bond from solver wallet
+  ✓ stake: 0.1 ETH
+→ Submitting intent with REAL FillParams + capturing result
+  ✓ tx mined SUCCESS: 0x161127…ae5300d (block 25010080)
+→ Verifying Fill event on chain
+  ✓ Filler emitted 1 Filled event
+  ✓ USDC Transfer events: 2
+  ✓ WETH Transfer events: 2
+✓ E2E PASS in 25.5s
 ```
 
-## What just happened
+Total runtime: **~25 seconds**. Reproducible — re-run produces fresh tx hashes with identical financial outcomes.
 
-1. **Anvil mainnet fork** at the latest block — real Uniswap contracts inherited from mainnet state
-2. **Filler + FillerBond** deployed at deterministic CREATE addresses
-3. **v4 USDC/WETH pool** initialized at the current mainnet v3 reference price
-4. **Liquidity seeded** via the `PoolSeeder` helper (10K USDC + 5 WETH)
-5. **Intent signed off-chain** (Permit2 EIP-712 + raw ECDSA cosigner) and submitted on-chain
-6. **Real swap** — 100 USDC → 0.0430 WETH, JIT spread captured by the Filler
+## 3. Verify on chain
 
-## Next steps
+The orchestrator prints the tx hash. Trace it:
 
-- [First Fill in 5 Minutes](/docs/first-fill) — narrated walkthrough of the same flow
-- [Deploying a Solver](/docs/guides/deploy) — your own solver project (`npx create-filler`)
+```bash
+cast run <txHash> --rpc-url http://localhost:8545
+```
 
-:::tip[Sprint 06 Plan 02]
-Full quickstart walkthrough — Sprint 06 Plan 02. This page is the skeleton.
-:::
+You'll see the full call tree:
+
+```
+Filler.execute
+  → Reactor.executeWithCallback
+    → ecrecover(cosignerDigest) → swapper ✓
+    → Permit2.permitWitnessTransferFrom (real Permit2 at 0x000000…a78ba3)
+      → ecrecover(permitDigest) → swapper ✓
+      → USDC.transferFrom(swapper → Filler, 100 USDC) ✓
+    → Filler.reactorCallback
+      → PoolManager.unlock (real v4 PoolManager at 0x000000…d2e3de08a90)
+        → modifyLiquidity (JIT add)
+        → swap (USDC → WETH)
+        → modifyLiquidity (JIT remove)
+      → Filler.Filled event emitted
+```
+
+And verify balances:
+
+```bash
+# Swapper got WETH:
+cast call 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 \
+  'balanceOf(address)(uint256)' \
+  0x625fA00992407D255673bEA7460aD012CFC00Fdd \
+  --rpc-url http://localhost:8545
+# → 43043478260869565  (= 0.043 WETH)
+
+# Filler captured spread:
+cast call 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 \
+  'balanceOf(address)(uint256)' \
+  0xC489d11D03B2999A6ba568e02E0b95eFc58b6A34 \
+  --rpc-url http://localhost:8545
+# → 1000209238771019948  (= 1 WETH inventory + 0.000209 WETH JIT spread)
+```
+
+## 4. Run your own intent
+
+The CLI ships at `packages/sdk/scripts/submit-intent.ts`. Keep anvil alive between runs:
+
+```bash
+KEEP_ALIVE=1 bun run e2e:fork
+```
+
+Then submit a custom intent in another terminal:
+
+```bash
+SWAPPER_PRIVATE_KEY=0xce10be1c2b65643c5121c9c55c5d929282ebb1ab9b21fe891ecf5e9adf24fe51 \
+  bun packages/sdk/scripts/submit-intent.ts \
+  --input USDC --output WETH \
+  --size 50 --decay 30 \
+  --submit
+```
+
+The `SWAPPER_PRIVATE_KEY` here is a fresh test key the orchestrator pre-funds — don't use anvil's well-known accounts (see [F-62 in FEEDBACK.md](/resources/feedback) for why).
+
+## 5. Run the dashboard
+
+The treasury-rebalance hero example ships a live SSE money counter:
+
+```bash
+cd examples/treasury-rebalance
+DEMO_MODE=true DEMO_INTERVAL_SEC=3 bun start
+```
+
+Open another terminal:
+
+```bash
+curl -N http://localhost:8080/events
+```
+
+You'll see real-time `event: spread-captured` payloads as synthetic intents flow through the Filler pipeline.
+
+For the visual: build + serve the dashboard:
+
+```bash
+cd apps/dashboard
+bun run preview   # → http://localhost:4173
+```
+
+## What's next?
+
+- **[First Fill in 5 Minutes](/docs/first-fill)** — narrated walkthrough of `bun run e2e:fork`
+- **[Atomic JIT Pattern](/docs/concepts/atomic-jit)** — what happens inside `Filler.unlockCallback`
+- **[Deploying a Solver](/docs/guides/deploy)** — your own `examples/treasury-rebalance`-style project
+- **[Recipes](/recipes)** — copy-pasteable templates for each vertical
+
+## Troubleshooting
+
+::::details Anvil never responds — `error sending request for url (http://localhost:8545/)`
+
+The fork's upstream RPC may be unavailable. Try a different `FORK_RPC`:
+
+```bash
+FORK_RPC=https://eth.merkle.io bun run e2e:fork
+```
+
+If that also fails, check `pgrep -af anvil` — there may be a stale anvil process. Kill all (`pkill -9 -f anvil`) and re-run.
+::::
+
+::::details `historical state ... is not available`
+
+The upstream RPC pruned state mid-fork. The orchestrator restarts anvil between runs to avoid this, but if you've been running for hours it accumulates. Solution: `pkill -9 -f anvil && bun run e2e:fork`.
+::::
+
+::::details `0x7983c051` revert during pool init
+
+This is the v4 PoolManager's `PoolAlreadyInitialized()` error — meaning someone (possibly a previous run, or mainnet) already initialized the pool. The orchestrator catches this automatically and proceeds with the inherited state. If it's bubbling up to you, the catch logic isn't matching — file an issue with your tx trace.
+::::
+
+::::details `0x3c4d8f0e` revert from Filler — `FillParamsLengthMismatch`
+
+You're submitting with empty `callbackData`. The orchestrator computes real `FillParams[]` and passes them via the `FILLPARAMS_CALLBACK_DATA` env var to `submit-intent.ts`. If you're calling `submit-intent.ts` directly without that env var, you'll hit this. Either set the env var or use `bun run e2e:fork`.
+::::
+
+::::details `0xd7db475a` revert — `InvalidFillParams`
+
+Your `FillParams.liquidityDelta == 0`. The Filler's validator requires `liquidityDelta > 0` even if you want to consume only the seeded pool's existing liquidity. Use a small positive value (e.g., `1e10`).
+::::
+
+::::details Permit2 takes ERC-1271 path — `isValidSignature` reverts
+
+Your swapper address has bytecode (typically EIP-7702 SetCode delegation post-Pectra). All anvil well-known accounts have this on mainnet — see [F-62](/resources/feedback). Use a fresh key:
+
+```bash
+cast wallet new --json
+```
+
+Update your env, fund the new address (the orchestrator does this automatically with `anvil_setBalance` + `anvil_setStorageAt`), and try again.
+::::
+
+::::details `_addJitLiquidity` reverts at `safeTransfer`
+
+The Filler doesn't have enough output-token inventory for the JIT add (in-range positions need both currencies). See [F-66](/resources/feedback) for the architectural finding. Pre-fund the Filler with `anvil_setStorageAt` against WETH slot 3 (or the relevant token's `_balances` mapping slot).
+::::
+
+## Want the autonomous solver experience?
+
+The `bun run e2e:fork` flow has the operator triggering the intent + the Filler executing it in the same process. That's exactly how a DAO-running-its-own-solver works in production.
+
+For a separate-solver model (DAO submits intent, *another* solver fills it), the SDK's `subscribeIntents` abstraction is in place — but [F-64](/resources/feedback) tracks the gap: the SDK ships only a `chainFillIntentSource` (observational, post-settle), not a `tradingApiIntentSource`. Once Uniswap publishes the Trading API wire format, the SDK adapter is a 1-day spike.

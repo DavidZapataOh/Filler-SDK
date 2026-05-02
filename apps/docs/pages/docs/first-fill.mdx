@@ -1,31 +1,245 @@
 # First Fill in 5 Minutes
 
-Step-by-step, first fill on a mainnet fork. Narrated for beginners.
+Step-by-step, narrated. What `bun run e2e:fork` actually does, why each step exists, and what to look at to verify it worked.
 
-:::tip[Sprint 06 Plan 02]
-Narrated walkthrough — Sprint 06 Plan 02. This page is the skeleton; today the actual flow is in [`bun run e2e:fork`](/docs/quickstart).
-:::
+If you just want the commands, skip to [Quickstart](/docs/quickstart). This page is for understanding the flow.
 
-## What you'll see
+## The setup
 
-1. anvil fork comes up
-2. Filler + FillerBond deploy
-3. v4 pool initialized + seeded with liquidity
-4. Wallets funded
-5. Bond staked
-6. Intent signed (Permit2 + cosigner)
-7. `Filler.execute` lands on chain
-8. USDC swapped to WETH; JIT spread captured
-
-## See it run
+You have a clean machine. Bun + Foundry installed. No Ethereum funded wallets, no testnet faucet, no API keys. The orchestrator does everything.
 
 ```bash
+cd filler-sdk
 bun run e2e:fork
 ```
 
-Total runtime: ~25 seconds.
+What follows is the 9-step trace + commentary.
 
-## Next
+---
 
-- [Atomic JIT Pattern](/docs/concepts/atomic-jit) — the on-chain mechanism
-- [Deploying a Solver](/docs/guides/deploy) — your own solver project
+## Step 1 — Anvil mainnet fork
+
+```
+→ Bringing up anvil fork
+  ✓ fork up at block 25010080
+```
+
+Anvil forks Ethereum mainnet at the latest block via `anvil --fork-url $FORK_RPC`. Default RPC is `https://ethereum.publicnode.com`. The fork inherits real mainnet state — every contract that exists on mainnet exists on the fork at the moment of the snapshot. We use `latest` (no pin) because runs complete in ~25s, well within the upstream cache window.
+
+**What's in the fork's state**:
+- v4 PoolManager at `0x000000000004444c5dc75cb358380d2e3de08a90` (real mainnet)
+- UniswapX V2 Reactor at `0x00000011f84b9aa48e5f8aa8b9897600006289be` (real mainnet, owner = Uniswap Timelock multisig)
+- Permit2 at `0x000000000022D473030F116dDEE9F6B43aC78BA3` (canonical, all chains)
+- USDC FiatTokenV2_2 + WETH9
+- Anyone's pre-existing v4 pool initializations
+
+**What's NOT in the fork**: actual liquidity in v4 pools. v4 mainnet ETH has effectively zero swap activity ([F-65](/resources/feedback)). We seed liquidity ourselves in step 5.
+
+---
+
+## Step 2 — Deploy Filler + FillerBond
+
+```
+→ Deploying Filler + FillerBond
+  ✓ Filler at 0xC489d11D03B2999A6ba568e02E0b95eFc58b6A34
+  ✓ FillerBond at 0x559Bb2F2beb43246bA63057F3750b742b92dBBf9
+```
+
+Forge script (`contracts/script/Deploy.s.sol`) deploys both contracts using anvil's well-known account #0 as deployer. Because deployer + nonce are deterministic (account #0 + nonce 0/1), the CREATE addresses are stable across every run — `0xC489…6A34` and `0x559B…BBf9`. Always.
+
+Ownership is atomically transferred to a multisig address (anvil[1]) in the same broadcast, per [ADR 0001](/resources/adrs) (immutable contracts) + the security-first principle (no EOA owner).
+
+---
+
+## Step 3 — Configure approvals
+
+```
+→ Configuring Filler approvals (USDC + WETH whitelist)
+  ✓ approvals configured
+```
+
+The multisig owner calls `Filler.configureApprovals([USDC, WETH])` — this is the one-time setup that:
+
+1. Whitelists USDC + WETH (`allowedCurrencies[c] = true`)
+2. `safeApprove(PoolManager, type(uint256).max)` for each
+3. `safeApprove(Reactor, type(uint256).max)` for each
+
+After this call, the Filler can transfer USDC/WETH to/from PoolManager + Reactor without per-tx approvals. The `approvalsConfigured` flag locks: the function can only be called once.
+
+For new tokens added later, `allowCurrency(currency)` is the operational entry — same approval pattern, same allowlist set.
+
+---
+
+## Step 4 — Initialize the v4 pool
+
+```
+→ Initializing v4 USDC/WETH pool + deploying seeder
+  ✓ v3 reference price: sqrtPriceX96=1647873770618430462951932381704023, tick=198863
+  ✓ pool already initialized — proceeding with mainnet state
+  ✓ PoolSeeder at 0x0eBBe07803795F8f731B1F8F9769Ed28C09B8A5C
+```
+
+We need a v4 USDC/WETH 0.05% pool. The orchestrator:
+
+1. Reads the **real mainnet v3 USDC/WETH 0.05% pool** at `0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640` for `slot0().sqrtPriceX96` — this is the live ETH/USDC market price proxy
+2. Calls `PoolManager.initialize(poolKey, sqrtPriceX96)` for the v4 equivalent (USDC = currency0, WETH = currency1, fee=500, tickSpacing=10, hooks=0x0)
+3. Catches `PoolAlreadyInitialized()` (selector `0x7983c051`) — mainnet has had this pool initialized for a while, so the fork inherits it. We just verify the price and proceed.
+
+Then deploys `PoolSeeder.sol` — a minimal `IUnlockCallback` helper that adds liquidity on behalf of an authorized caller.
+
+---
+
+## Step 5 — Seed liquidity
+
+```
+→ Funding seeder + adding LP liquidity
+  ✓ seeder funded: 10000 USDC + 5 WETH
+  ✓ liquidity seeded: ticks [197860, 199860], L=1000000000000000
+```
+
+`anvil_setStorageAt` writes directly to USDC and WETH `_balances` mappings, giving the `PoolSeeder` 10K USDC + 5 WETH instantly. Storage slots:
+
+- USDC FiatTokenV2_2 implementation: `_balances` at slot 9
+- WETH9 canonical: `_balances` at slot 3
+
+Then the seeder calls `PoolManager.unlock(...)` with a callback that adds an LP position spanning ticks `[197860, 199860]` (~1% range either side of currentTick) with `liquidityDelta = 1e15`.
+
+Why `setStorageAt` and not whale impersonation? The upstream RPC sometimes prunes whale state, breaking impersonation mid-fork. Direct storage writes work regardless of upstream pruning + are cleaner for the demo voiceover (no "borrowed funds" optics).
+
+---
+
+## Step 6 — Fund swapper + solver + Filler inventory
+
+```
+→ Funding swapper + solver + Filler inventory
+  ✓ swapper 0x625fA00992407D255673bEA7460aD012CFC00Fdd: 1 ETH + 4000 USDC
+  ✓ solver 0xfaa792ce4873945cD67CEB5BcAeA0B84eb455510: 1 ETH
+  ✓ Filler 0xC489d11D03B2999A6ba568e02E0b95eFc58b6A34: 1 WETH inventory (for JIT)
+```
+
+Three separate addresses, three reasons:
+
+- **Swapper** — the "DAO" submitting the intent. Needs ETH for gas + USDC to be transferred via Permit2.
+- **Solver** — the operator filling the intent. Needs ETH for gas + bond stake.
+- **Filler contract** — needs WETH inventory to do the in-range JIT add. See [F-66](/resources/feedback) — the Filler holds output-token inventory by design (the treasury-rebalance vertical absorbs this naturally).
+
+All three keys are **fresh** (never used on real mainnet) because anvil's well-known accounts have EIP-7702 SetCode delegation on mainnet ([F-62](/resources/feedback)) — that breaks Permit2's signature verification by routing through `isValidSignature` instead of `ecrecover`.
+
+---
+
+## Step 7 — Stake bond
+
+```
+→ Staking bond from solver wallet
+  ✓ stake: 0.1 ETH
+```
+
+The solver calls `FillerBond.stake(filler) payable` with 0.1 ETH. The `Staked(filler, staker, amount)` event fires; from now on, the Filler is operationally accountable. If a slashable violation happens (per [ADR 0002](/resources/adrs)), the bond owner can submit evidence and slash.
+
+Verify on chain:
+
+```bash
+cast call 0x559Bb2F2beb43246bA63057F3750b742b92dBBf9 \
+  'stakeOf(address,address)(uint256)' \
+  0xC489d11D03B2999A6ba568e02E0b95eFc58b6A34 \
+  0xfaa792ce4873945cD67CEB5BcAeA0B84eb455510 \
+  --rpc-url http://localhost:8545
+# → 100000000000000000  (= 0.1 ETH)
+```
+
+---
+
+## Step 8 — Submit intent + execute
+
+```
+→ Submitting intent with REAL FillParams + capturing result
+  ✓ callbackData: 544 bytes
+  ✓ tx mined SUCCESS: 0x161127…ae5300d (block 25010080)
+  ✓ logs: 9 events emitted
+```
+
+The orchestrator computes real `FillParams[]`:
+
+```typescript
+{
+  poolKey: { currency0: USDC, currency1: WETH, fee: 500, tickSpacing: 10, hooks: 0x0 },
+  inputCurrency: USDC, outputCurrency: WETH,
+  inputAmount: 100e6,         // 100 USDC
+  outputAmount: 4.3e16,       // 0.043 WETH (real spot proxy)
+  zeroForOne: true,
+  tickLower: 197860, tickUpper: 199860,
+  liquidityDelta: 1e10,        // small JIT slice on top of seed
+  feesCaptured: 0,
+  deadline: now + 600,
+}
+```
+
+Encoded as `bytes` and passed to `submit-intent.ts` via the `FILLPARAMS_CALLBACK_DATA` env var. The CLI then:
+
+1. Builds a `V2DutchOrder` (UniswapX V2 Dutch order shape)
+2. **Self-cosigns** with the swapper key — `ecrecover(keccak256(orderHash || abi.encode(cosignerData)))` ([F-61](/resources/feedback) — the V2 reactor requires a cosignature unconditionally; for "open" orders the swapper cosigns themselves)
+3. Signs the Permit2 EIP-712 typed-data envelope
+4. Approves USDC for Permit2 (max allowance)
+5. Calls `Filler.execute(SignedOrder, callbackData)`
+
+Inside the tx:
+
+- `Reactor.executeWithCallback` validates cosignature ✓
+- `Permit2.permitWitnessTransferFrom` validates swapper signature + transfers 100 USDC from swapper to Filler ✓
+- `Filler.reactorCallback` decodes `FillParams[]`, calls `PoolManager.unlock`
+- Inside unlock: JIT add → swap (100 USDC → ~0.043 WETH from pool) → JIT remove → settle deltas to zero
+- `Filler.Filled` event emitted
+- Reactor transfers the output (0.043 WETH) from Filler to swapper
+
+---
+
+## Step 9 — Verify
+
+```
+→ Verifying Fill event on chain
+  ✓ Filler emitted 1 Filled event
+  ✓ USDC Transfer events: 2
+  ✓ WETH Transfer events: 2
+
+✓ E2E PASS in 25.5s.
+```
+
+The orchestrator parses the receipt and confirms:
+
+- 1 `Filler.Filled` event
+- 2 USDC transfers (swapper → Filler, then Filler→PoolManager during the swap)
+- 2 WETH transfers (PoolManager→Filler, then Filler→swapper)
+
+Read post-fill balances:
+
+```bash
+# Swapper:  4000 → 3900 USDC, 0 → 0.043 WETH
+# Filler:   0 → ~0 USDC dust, 1 → 1.000209 WETH (kept the JIT spread)
+```
+
+The Filler captured **0.000209 WETH ≈ $0.48** as the JIT liquidity provider's fee on this fill. That's the economic value of the vertical-solver primitive: a DAO running its own solver internalizes that spread instead of paying it to a third-party aggregator.
+
+---
+
+## Try variants
+
+Same flow, different intent sizes:
+
+```bash
+KEEP_ALIVE=1 bun run e2e:fork                          # leaves anvil running
+
+# In another terminal, larger intent:
+SWAPPER_PRIVATE_KEY=0xce10be1c2b65643c5121c9c55c5d929282ebb1ab9b21fe891ecf5e9adf24fe51 \
+  FILLPARAMS_CALLBACK_DATA="...your computed bytes..." \
+  bun packages/sdk/scripts/submit-intent.ts \
+  --input USDC --output WETH --size 1000 --decay 60 --submit
+```
+
+---
+
+## What's next?
+
+- **[Atomic JIT Pattern](/docs/concepts/atomic-jit)** — the on-chain primitive
+- **[Deploying a Solver](/docs/guides/deploy)** — your own solver project (`npx create-filler`)
+- **[Treasury Rebalance Recipe](/recipes/treasury-rebalance)** — the hero example, fully walked
+- **[Production Checklist](/docs/guides/production)** — what to harden before going live
