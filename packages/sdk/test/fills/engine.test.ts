@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import {
   BroadcastFailedError,
@@ -407,12 +407,24 @@ describe('FillEngine.execute', () => {
     );
   });
 
-  test('rejects useKeeperHub:true with a Plan-08 pointer', async () => {
-    const engine = makeEngine({ keeperHub: { fake: true } });
+  test('useKeeperHub:true delegates to keeperHub.submitFill', async () => {
+    const submitFillMock = vi.fn(async () => ({
+      txHash: '0xkeeperhubtx' as `0x${string}`,
+      blockNumber: 42n,
+      effectiveGasPriceWei: 1_000_000_000n,
+      gasUsed: 90_000n,
+      feeCapturedAmount: 1_000_000n,
+      intent: makeIntent(),
+      params: undefined as unknown,
+    }));
+    const fakeHub = { submitFill: submitFillMock };
+    const engine = makeEngine({ keeperHub: fakeHub as never });
     const params = (await makeEngine({}).prepare(makeIntent()))!;
-    await expect(
-      engine.execute(makeIntent(), params, { useKeeperHub: true }),
-    ).rejects.toThrow(/Plan 08/);
+    const result = await engine.execute(makeIntent(), params, {
+      useKeeperHub: true,
+    });
+    expect(result.txHash).toBe('0xkeeperhubtx');
+    expect(submitFillMock).toHaveBeenCalledTimes(1);
   });
 
   test('applies a custom gasMultiplier', async () => {

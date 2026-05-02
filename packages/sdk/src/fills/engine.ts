@@ -37,7 +37,6 @@ import { fillerAbi } from '../abis';
 import {
   BroadcastFailedError,
   ConfigInvalidError,
-  FillerError,
   IntentExpiredError,
   RPCError,
   SimulationRevertedError,
@@ -285,13 +284,21 @@ export class FillEngine implements FillSurface {
     );
 
     if (useKeeperHub) {
-      // KeeperHub path lands when Plan 08's submitFill API is wired. For
-      // Plan 04 we explicitly throw — silent fallback to direct would mask
-      // the user's MEV-protection intent.
-      throw new FillerError(
-        'UNKNOWN',
-        'KeeperHub routing is implemented in Plan 08; for now disable useKeeperHub or remove the keeperHub config',
-      );
+      if (this.#keeperHub === null) {
+        // Defensive: useKeeperHub already checked keeperHub !== null above,
+        // but TS narrows once we re-enter the branch. Surface a clean error.
+        throw new ConfigInvalidError(
+          'submitFill: useKeeperHub=true but no KeeperHub client configured',
+        );
+      }
+      try {
+        return await this.#keeperHub.submitFill(intent, params, gasLimit);
+      } catch (err) {
+        // KeeperHubClient already wraps to BroadcastFailedError /
+        // TimeoutError / RPCError / ConfigInvalidError. Re-throw without
+        // wrapping again so callers get the typed signal directly.
+        throw err;
+      }
     }
 
     return this.#submitDirect(intent, params, callbackData, gasLimit);

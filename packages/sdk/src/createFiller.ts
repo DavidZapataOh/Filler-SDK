@@ -370,6 +370,7 @@ function assembleFiller(config: ResolvedFillerConfig): Filler {
           apiKey: config.keeperHub.apiKey,
           chainId: config.chainId,
           account: config.account,
+          fillerContract: config.addresses.filler,
           logger: log,
         });
 
