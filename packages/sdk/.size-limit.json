@@ -21,7 +21,7 @@
     "name": "Testing utilities (gzipped)",
     "path": "dist/testing.js",
     "limit": "20 KB",
-    "ignore": ["viem", "pino", "zod"]
+    "ignore": ["viem", "pino", "zod", "vitest", "node:child_process", "child_process"]
   },
   {
     "name": "ABIs (gzipped)",

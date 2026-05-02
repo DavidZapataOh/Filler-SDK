@@ -23,11 +23,14 @@ describe('@filler-sdk/sdk — public exports', () => {
     expect(typeof sdk.resolveFillerConfig).toBe('function');
   });
 
-  test('chain registry is frozen + has all 5 mainnets + 2 testnets', () => {
+  test('chain registry is frozen + has all 5 mainnets + 2 testnets + foundry', () => {
+    // Foundry/Anvil (chain id 31337) was added in Plan 09 alongside the
+    // testing utilities so Anvil-backed Filler instances type-check cleanly.
     expect(Object.isFrozen(sdk.chains)).toBe(true);
     expect(Object.keys(sdk.chains).sort()).toEqual([
       'arbitrum',
       'base',
+      'foundry',
       'mainnet',
       'optimism',
       'sepolia',
@@ -42,7 +45,7 @@ describe('@filler-sdk/sdk — public exports', () => {
   });
 
   test('getViemChain returns a viem Chain object for each supported id', () => {
-    for (const id of [1, 130, 8453, 42161, 10, 11_155_111, 11_155_420] as const) {
+    for (const id of [1, 130, 8453, 42161, 10, 11_155_111, 11_155_420, 31_337] as const) {
       const chain = sdk.getViemChain(id);
       expect(chain.id).toBe(id);
       expect(typeof chain.name).toBe('string');

@@ -28,13 +28,22 @@ import type { Address, Chain } from 'viem';
 import {
   arbitrum as viemArbitrum,
   base as viemBase,
+  foundry as viemFoundry,
   mainnet as viemMainnet,
   optimism as viemOptimism,
   sepolia as viemSepolia,
 } from 'viem/chains';
 
 /** Supported chain identifiers. Branded so callers can't pass arbitrary numbers. */
-export type ChainId = 1 | 130 | 8453 | 42161 | 10 | 11_155_111 | 11_155_420;
+export type ChainId =
+  | 1
+  | 130
+  | 8453
+  | 42161
+  | 10
+  | 11_155_111
+  | 11_155_420
+  | 31_337;
 
 export type ChainName =
   | 'mainnet'
@@ -43,7 +52,8 @@ export type ChainName =
   | 'arbitrum'
   | 'optimism'
   | 'sepolia'
-  | 'unichainSepolia';
+  | 'unichainSepolia'
+  | 'foundry';
 
 export interface ChainDeployedAddresses {
   /** Uniswap v4 PoolManager. */
@@ -187,6 +197,23 @@ const UNICHAIN_SEPOLIA: ChainConfig = {
   },
 };
 
+// Foundry / Anvil — local dev / fork tests. All addresses are placeholder
+// because the consumer deploys their own; the chain id matches Foundry's
+// well-known default (31337).
+const FOUNDRY: ChainConfig = {
+  id: 31_337,
+  name: 'foundry',
+  displayName: 'Anvil (foundry)',
+  blockTimeSec: 1,
+  addresses: {
+    poolManager: PLACEHOLDER,
+    permit2: PERMIT2,
+    reactor: PLACEHOLDER,
+    filler: PLACEHOLDER,
+    fillerBond: PLACEHOLDER,
+  },
+};
+
 /**
  * The exhaustive chain registry. Iterated by `getChainById` / `getChainByName`.
  * Frozen so consumers can't accidentally mutate the deployed addresses table
@@ -200,6 +227,7 @@ export const chains = Object.freeze({
   optimism: OPTIMISM,
   sepolia: SEPOLIA,
   unichainSepolia: UNICHAIN_SEPOLIA,
+  foundry: FOUNDRY,
 }) satisfies Readonly<Record<ChainName, ChainConfig>>;
 
 const BY_ID: Readonly<Record<ChainId, ChainConfig>> = Object.freeze({
@@ -210,6 +238,7 @@ const BY_ID: Readonly<Record<ChainId, ChainConfig>> = Object.freeze({
   10: OPTIMISM,
   11_155_111: SEPOLIA,
   11_155_420: UNICHAIN_SEPOLIA,
+  31_337: FOUNDRY,
 });
 
 export function getChainById(id: ChainId): ChainConfig {
@@ -273,6 +302,7 @@ const VIEM_BY_ID: Readonly<Record<ChainId, Chain>> = Object.freeze({
   10: viemOptimism,
   11_155_111: viemSepolia,
   11_155_420: UNICHAIN_SEPOLIA_VIEM,
+  31_337: viemFoundry,
 });
 
 /**

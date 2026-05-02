@@ -47,7 +47,13 @@
     "clean": "rm -rf dist coverage .tsup"
   },
   "peerDependencies": {
-    "viem": "^2.21.0"
+    "viem": "^2.21.0",
+    "vitest": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
   },
   "dependencies": {
     "pino": "^10.3.1",

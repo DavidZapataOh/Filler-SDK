@@ -39,5 +39,8 @@ export default defineConfig({
   // peer + workspace deps must NOT be bundled — downstream consumers bring
   // their own viem, and the SDK consuming jit-hints types needs them as
   // module-level imports, not inlined into the SDK bundle.
-  external: ['viem', '@filler-sdk/jit-hints', 'pino', 'zod'],
+  //
+  // `vitest` is the optional peer for the /testing entry; marking it external
+  // keeps non-test consumers free of vitest at install time.
+  external: ['viem', '@filler-sdk/jit-hints', 'pino', 'zod', 'vitest'],
 });
