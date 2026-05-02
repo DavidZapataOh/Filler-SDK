@@ -22,8 +22,8 @@
 import { ArrowUpRight, Github } from 'lucide-react';
 
 import { Hero } from './components/Hero/Hero';
-import { HeroCounter } from './components/HeroCounter';
 import { LiveBadge } from './components/LiveBadge';
+import { SpreadCounter } from './components/SpreadCounter';
 
 export function App(): JSX.Element {
   return (
@@ -108,8 +108,10 @@ function LiveCapturedSection(): JSX.Element {
         an external aggregator. Watch the cumulative capture in real time.
       </p>
 
-      {/* Plan 01: static placeholder. Plan 03 swaps to SSE-driven. */}
-      <HeroCounter amountUSD={0} className="mt-4 w-full" />
+      {/* Plan 03 ships the live counter visual. Plan 06 will pass `source`
+          via `useSSE(...)` once the SSE hook lands; until then the counter
+          renders the empty state ("Waiting for the first fill…"). */}
+      <SpreadCounter className="mt-4 w-full max-w-2xl" />
     </section>
   );
 }
