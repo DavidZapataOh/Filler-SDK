@@ -218,11 +218,13 @@ describe('FillEngine.prepare', () => {
     expect(result).toBeNull();
   });
 
-  test('returns null when calibration rejects misaligned ticks', async () => {
+  test('returns null when calibration rejects an inverted indexer hint', async () => {
+    // Plan 05 snaps misaligned ticks instead of rejecting them; the only
+    // calibration-side throw left is a malformed hint where tickLower >=
+    // tickUpper (an indexer bug we shouldn't paper over).
     const engine = makeEngine({
       indexer: createMockIndexer({
-        pool: makePoolInfo({ tickSpacing: 60 }),
-        depth: makeDepthHint({ tickLower: -119, tickUpper: 120 }), // not aligned
+        depth: makeDepthHint({ tickLower: 240, tickUpper: -240 }),
       }),
     });
     const result = await engine.prepare(makeIntent());
@@ -245,8 +247,10 @@ describe('FillEngine.prepare', () => {
     expect(result.poolKey.currency0).toBe(TEST_ADDRESSES.TOKEN_A);
     expect(result.poolKey.fee).toBe(3000);
     expect(result.zeroForOne).toBe(true);
-    expect(result.tickLower).toBe(-120);
-    expect(result.tickUpper).toBe(120);
+    // Plan 05 default safetyMarginTicks=1 widens the indexer hint by one
+    // tickSpacing (60) per side: [-120, 120] → [-180, 180].
+    expect(result.tickLower).toBe(-180);
+    expect(result.tickUpper).toBe(180);
     expect(result.feesCaptured).toBe(1_000_000n);
     expect(result.outputAmount).toBe(500_000_000n);
   });

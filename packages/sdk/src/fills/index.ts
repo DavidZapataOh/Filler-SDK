@@ -19,5 +19,13 @@ export {
   decodeCallbackData,
   encodeCallbackData,
 } from './encoding';
-export { calibrateTickRange, type CalibratedRange, type CalibrateInput } from './tickCalibration';
+export {
+  calibrateTickRange,
+  ceilToSpacing,
+  floorToSpacing,
+  TICK_BOUNDS,
+  type CalibratedRange,
+  type CalibrateInput,
+  type CalibrationOptions,
+} from './tickCalibration';
 export { extractRevertReason, simulateFill } from './simulation';
