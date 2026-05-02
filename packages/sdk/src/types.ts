@@ -494,10 +494,20 @@ export interface IndexerSurface {
   /**
    * Resolve a pool for a token pair. Returns the pool best suited to fill
    * an intent for `(input, output)` on `chainId`, or `null` if no indexed
-   * pool matches. The selection heuristic (highest liquidity / lowest fee /
-   * preferred hook) is implementation-defined and lands in Plan 06.
+   * pool matches. Selection: hookless first, then highest liquidity, then
+   * lowest fee tier (so callers get a deterministic best-pool choice).
    */
   findPool(input: Address, output: Address, chainId: ChainId): Promise<PoolInfo | null>;
+  /**
+   * SSE-stream of `DepthHint` updates for `query`. Returns an unsubscribe fn.
+   * The stream auto-reconnects on transport failure with exponential backoff.
+   * Errors during connection are logged; the callback only fires on a
+   * successfully decoded hint payload.
+   */
+  subscribeDepth(
+    query: DepthQuery,
+    onHint: (hint: DepthHint) => void | Promise<void>,
+  ): () => void;
   /** GET /health — used by readiness probes. */
   health(): Promise<{ status: 'ok' | 'degraded'; chains: readonly ChainStatus[] }>;
 }
@@ -528,15 +538,23 @@ export interface PoolInfo {
 }
 
 /**
- * Re-exported from `@filler-sdk/jit-hints` (the indexer package owns the
- * canonical shape). We surface them here as a convenience so SDK consumers
- * don't need a second import for one type.
+ * Mirrored from `@filler-sdk/jit-hints` (the indexer package owns the
+ * canonical wire format). We surface them here so SDK consumers don't need
+ * a second import for one type.
  */
 export interface DepthQuery {
   pool: PoolId;
   size: bigint;
   zeroForOne: boolean;
+  /** Slippage budget in basis points. Indexer default is 50 bps (0.5%). */
   slippageBps?: number;
+  /**
+   * Optional gas-price override (gwei). When set, the indexer adjusts the
+   * `estimatedNetProfit` field. Otherwise it uses the chain's recent base
+   * fee (Plan 06 refinement; today the indexer ignores this and always
+   * uses defaults).
+   */
+  gasPriceGwei?: number;
 }
 
 export interface DepthHint {
@@ -546,6 +564,30 @@ export interface DepthHint {
     tickUpper: number;
     liquidityDelta: bigint;
     expectedFeeCapture: bigint;
+    /**
+     * Slippage that the indexer expects this fill to incur (against the
+     * pool's current tick). Optional because not every indexer impl carries
+     * it; jit-hints does.
+     */
+    expectedSlippageBps?: number;
+    /**
+     * Estimated gas overhead for the JIT cycle (mint + swap + burn), in wei.
+     * Useful for net-profit math the engine doesn't run itself.
+     */
+    expectedGasOverhead?: bigint;
+    /**
+     * Indexer's net-profit estimate (`expectedFeeCapture - expectedGasOverhead`).
+     * The engine uses this for the profitability gate when present.
+     */
+    estimatedNetProfit?: bigint;
+  };
+  /**
+   * Pool snapshot at hint-generation time. Optional — present in jit-hints'
+   * response, absent in minimal indexer impls.
+   */
+  poolState?: {
+    currentTick: number;
+    currentSqrtPrice: bigint;
   };
 }
 

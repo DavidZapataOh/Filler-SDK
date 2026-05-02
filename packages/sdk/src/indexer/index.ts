@@ -12,4 +12,8 @@ export type {
   IndexerSurface,
 } from '../types';
 
-export { IndexerClient, type IndexerClientConfig } from './client';
+export {
+  decodeDepthHint,
+  IndexerClient,
+  type IndexerClientConfig,
+} from './client';
