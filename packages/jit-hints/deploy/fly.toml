@@ -1,0 +1,46 @@
+# fly.toml — production hosting config for @filler-sdk/jit-hints API.
+#
+# Deploy from the REPO ROOT (the Dockerfile depends on workspace metadata):
+#
+#   fly launch --copy-config --no-deploy   # one-time, picks an app name
+#   fly secrets set DATABASE_URL=postgres://... \
+#                   MAINNET_RPC_URL=https://eth.publicnode.com \
+#                   DASHBOARD_ORIGIN=https://dashboard.filler-sdk.xyz
+#   fly deploy --config packages/jit-hints/deploy/fly.toml \
+#              --dockerfile packages/jit-hints/Dockerfile
+#
+# This config is for the HTTP API process only. The Ponder indexer is a
+# SECOND fly app pointing at the same Postgres — see ./RUNBOOK.md.
+
+app = "filler-sdk-jit-hints"
+primary_region = "iad"   # us-east — adjust to operator preference
+kill_signal = "SIGTERM"
+kill_timeout = "15s"
+
+[build]
+  dockerfile = "packages/jit-hints/Dockerfile"
+
+[env]
+  PORT = "42069"
+  HOST = "0.0.0.0"
+  LOG_LEVEL = "info"
+
+[http_service]
+  internal_port = 42069
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "20s"
+  method = "GET"
+  path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1

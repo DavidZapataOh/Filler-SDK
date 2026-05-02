@@ -1,0 +1,78 @@
+# docker-compose.fork.yml
+#
+# Local Sprint 5.5 fork-mode E2E: API server + Ponder indexer + Postgres,
+# all pointing at an anvil mainnet fork running on the host machine.
+#
+# Prerequisites:
+#   1. anvil --fork-url <mainnet-rpc> --fork-block-number 25008784 \
+#            --chain-id 31337 --port 8545     (run on the host)
+#   2. From repo root:  docker compose -f packages/jit-hints/deploy/docker-compose.fork.yml up
+#
+# This is for LOCAL e2e dev only. Production uses Railway / Fly + a managed
+# Postgres add-on (see RUNBOOK.md).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jit_hints
+      POSTGRES_USER: jit_hints
+      POSTGRES_PASSWORD: jit_hints_local
+    volumes:
+      - jit-hints-pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jit_hints"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  indexer:
+    # The Ponder process — backfills + tails chain events into Postgres.
+    build:
+      context: ../../..
+      dockerfile: packages/jit-hints/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://jit_hints:jit_hints_local@postgres:5432/jit_hints
+      LOG_LEVEL: info
+      # Point mainnet RPC at the host's anvil fork. The chain ID mismatch
+      # (1 vs 31337) emits a Ponder WARN but does NOT block.
+      MAINNET_RPC_URL: http://host.docker.internal:8545
+      # Recent block keeps backfill cheap (~80 blocks against the fork's
+      # snapshotted history rather than 25M from genesis).
+      MAINNET_START_BLOCK: "25008700"
+    command: ["bun", "run", "ponder", "start"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  api:
+    # The HTTP / SSE server. Reads from the same Postgres the indexer writes.
+    build:
+      context: ../../..
+      dockerfile: packages/jit-hints/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://jit_hints:jit_hints_local@postgres:5432/jit_hints
+      LOG_LEVEL: info
+      PORT: "42069"
+      HOST: "0.0.0.0"
+    ports:
+      - "42069:42069"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:42069/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  jit-hints-pgdata:

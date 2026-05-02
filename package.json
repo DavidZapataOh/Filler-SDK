@@ -12,6 +12,8 @@
   "workspaces": ["packages/*", "examples/*", "apps/*"],
   "scripts": {
     "build": "bun run --filter '*' build",
+    "e2e:fork": "bun packages/sdk/scripts/e2e-fork.ts",
+    "submit:intent": "bun packages/sdk/scripts/submit-intent.ts",
     "build:contracts": "cd contracts && forge build",
     "build:contracts:sizes": "cd contracts && forge build --sizes",
     "test": "bun run --filter '*' test",

@@ -197,20 +197,33 @@ const UNICHAIN_SEPOLIA: ChainConfig = {
   },
 };
 
-// Foundry / Anvil — local dev / fork tests. All addresses are placeholder
-// because the consumer deploys their own; the chain id matches Foundry's
-// well-known default (31337).
+// Foundry / Anvil — local dev OR mainnet fork (Sprint 5.5 Plan 02 default).
+// When run as `anvil --fork-url <mainnet>`, the mainnet UniswapX + v4 +
+// Permit2 deployments are inherited as state. Filler + FillerBond addresses
+// are the deterministic CREATE outputs from the canonical deploy script
+// (Deploy.s.sol with anvil's well-known DEPLOYER_KEY against a clean fork).
+//
+// Operators running fork mode get a working chain entry without overriding.
+// Operators running pure local anvil (no fork) MUST override these via
+// `getDeployedAddresses(chain, overrides)` — there's nothing to point at.
 const FOUNDRY: ChainConfig = {
   id: 31_337,
   name: 'foundry',
-  displayName: 'Anvil (foundry)',
+  displayName: 'Anvil (foundry / mainnet fork)',
   blockTimeSec: 1,
   addresses: {
-    poolManager: PLACEHOLDER,
+    // Mainnet v4 PoolManager — inherited from fork state.
+    poolManager: '0x000000000004444c5dc75cb358380d2e3de08a90',
     permit2: PERMIT2,
-    reactor: PLACEHOLDER,
-    filler: PLACEHOLDER,
-    fillerBond: PLACEHOLDER,
+    // Mainnet UniswapX V2DutchOrderReactor — inherited from fork state.
+    // Owner verified on-chain as Uniswap Timelock Multisig
+    // (0x1a9C8182C09F50C8318d769245beA52c32BE35BC) — see
+    // plans/sprint-05.5-testnet-e2e/decisions.md.
+    reactor: '0x00000011f84b9aa48e5f8aa8b9897600006289be',
+    // Deterministic CREATE outputs from anvil deployer (account #0) + nonce 0,1.
+    // Captured in contracts/deployments/31337.json by Deploy.s.sol.
+    filler: '0xC489d11D03B2999A6ba568e02E0b95eFc58b6A34',
+    fillerBond: '0x559Bb2F2beb43246bA63057F3750b742b92dBBf9',
   },
 };
 

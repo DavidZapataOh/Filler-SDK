@@ -1,0 +1,28 @@
+{
+  "name": "@filler-sdk/example-treasury-rebalance",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Treasury Rebalance Filler — UniswapX vertical solver on foundry/anvil mainnet fork (Sprint 5.5 Plan 05 hero example)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/filler.ts",
+    "dev": "bun --hot src/filler.ts",
+    "demo": "DEMO_MODE=true bun src/filler.ts",
+    "stake": "bun src/stake.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@filler-sdk/sdk": "workspace:*",
+    "viem": "^2.21.0",
+    "zod": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
