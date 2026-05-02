@@ -1,0 +1,11 @@
+# Recorded artifacts — large binaries, do not commit.
+*.mp4
+*.webm
+*.mp3
+*.wav
+*.m4a
+*.aac
+
+# But keep voiceover scripts + this gitignore.
+!voiceover-*.txt
+!.gitignore

@@ -1,0 +1,94 @@
+name: Demo recording (manual)
+
+# Manual-trigger only. Demo recordings are infrequent + expensive in CI
+# minutes (chromium + ffmpeg encode for ~95s + artifact upload). Operators
+# fire this from the Actions tab when they want a fresh artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: 'Replay fixture to record'
+        type: choice
+        required: true
+        default: 'treasury'
+        options:
+          - treasury
+          - lvr
+          - simple
+      duration:
+        description: 'Recording duration in seconds'
+        type: string
+        required: false
+        default: '95'
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    name: Record ${{ inputs.fixture }} (${{ inputs.duration }}s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.30
+
+      - name: Install ffmpeg + chromium + Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg chromium-browser xvfb
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile
+
+      - name: Syntax-check shell scripts
+        run: |
+          bash -n apps/dashboard/scripts/record-demo.sh
+          bash -n apps/dashboard/scripts/verify-recording.sh
+          bash -n apps/dashboard/scripts/concat-segments.sh
+
+      - name: Start Xvfb
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 &
+          # Give it a beat to come up.
+          sleep 1
+        env:
+          DISPLAY: ':99'
+
+      - name: Record demo
+        env:
+          DISPLAY: ':99'
+        working-directory: apps/dashboard
+        run: |
+          bash ./scripts/record-demo.sh \
+            "${{ inputs.fixture }}" \
+            "${{ inputs.duration }}"
+
+      - name: Validate recording
+        working-directory: apps/dashboard
+        run: |
+          mp4="$(ls -t recordings/demo-${{ inputs.fixture }}-*.mp4 | head -1)"
+          echo "Validating $mp4"
+          bash ./scripts/verify-recording.sh "$mp4" "${{ inputs.duration }}"
+
+      - name: Upload recording
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-${{ inputs.fixture }}-${{ github.run_id }}
+          path: apps/dashboard/recordings/*.mp4
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload preview-server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-log-${{ inputs.fixture }}-${{ github.run_id }}
+          path: /tmp/dashboard-preview.log
+          retention-days: 7
+          if-no-files-found: ignore

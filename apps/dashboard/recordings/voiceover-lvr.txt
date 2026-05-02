@@ -1,0 +1,48 @@
+Voiceover script — LVR-aware solver demo (~90 seconds)
+=======================================================
+
+Source fixture: src/fixtures/lvr.ts
+Replay URL:     http://localhost:4173/?replay=lvr
+
+Timeline (mm:ss):
+
+[00:00 – 00:08]  HERO BEFORE/AFTER lands.
+
+[00:08 – 00:30]  STAT KILLER + INTRO.
+
+  "Loss versus rebalancing — LVR — is the silent tax on every
+  Uniswap LP. Estimates put it at four to five basis points per day
+  on a typical ETH pool. That's billions of dollars per year leaking
+  from passive liquidity to arbitrage flow."
+
+  "Filler SDK deploys an LVR-aware solver in npm install. Tres archivos
+  y un bond. Demo en ninety seconds."
+
+[00:30 – 01:05]  LIVE COUNTER, smaller but more frequent.
+
+  "This solver only fills swaps where the captured spread strictly
+  reduces LP losses. Eighty four dollars. One twenty seven. One ninety
+  eight. Smaller than treasury internalisation but at higher cadence —
+  the LVR filter takes only LP-favorable trades, twelve in this window."
+
+[01:05 – 01:30]  JIT DEPTH chart with LVR overlay.
+
+  "The green band shows our LVR-favorable JIT range — the slice
+  where adding capital reduces LP losses. The strategy file is twenty
+  lines: it computes the LVR formula, accepts only fills that strictly
+  reduce it, donates twenty five percent of the captured fees back to
+  active LPs."
+
+[01:30 – 01:45]  THREE FILES REVEAL.
+
+  "Strategy dot ts — the LVR math."
+  "filler dot ts — the loop."
+  "config dot ts — the volatility knob."
+  "y un bond."
+
+[01:45 – 02:00]  CLOSE.
+
+  "Two thousand six hundred dollars in fees recovered for LPs in ninety
+  seconds. Multiplied across the long tail of v4 pools — that's the
+  LVR-aware solver category nobody has shipped yet because the infra
+  was four weeks. Now it's npm install."

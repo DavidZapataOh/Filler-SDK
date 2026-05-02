@@ -1,0 +1,51 @@
+Voiceover script — simple JIT demo (~90 seconds)
+================================================
+
+Source fixture: src/fixtures/simple.ts
+Replay URL:     http://localhost:4173/?replay=simple
+
+Timeline (mm:ss):
+
+[00:00 – 00:08]  HERO BEFORE/AFTER lands.
+
+[00:08 – 00:30]  STAT KILLER + INTRO.
+
+  "UniswapX has roughly fifteen production solvers. Wintermute,
+  Bebop, Tokka, Bunni. Each one took weeks of infrastructure work
+  to ship — indexer, inventory tracking, atomic JIT, hardening.
+  Most teams give up after week two."
+
+  "Filler SDK collapses that into a project template. Tres archivos
+  y un bond. The simplest possible solver, in npm install."
+
+[00:30 – 01:00]  LIVE COUNTER — baseline behavior.
+
+  "Standard JIT solver. The bot subscribes to UniswapX intents,
+  filters for fillable opportunities, atomically adds liquidity,
+  fills the swap, removes liquidity, captures the spread."
+
+  "Four hundred twelve. Five eighty seven. Eight twenty four. Mid-sized
+  fills at moderate cadence — the baseline that the LVR-aware and
+  treasury-rebalance verticals build on."
+
+[01:00 – 01:25]  JIT DEPTH chart.
+
+  "Same primitives every solver needs: query the indexer for available
+  depth, compute the optimal JIT range, atomically add and remove.
+  The SDK handles the four-week swamp; you write the strategy file."
+
+[01:25 – 01:45]  THREE FILES REVEAL.
+
+  "Strategy dot ts — what to fill."
+  "filler dot ts — how to run."
+  "config dot ts — your environment."
+  "y un bond."
+
+[01:45 – 02:00]  CLOSE.
+
+  "Five thousand eight hundred dollars captured in the first ninety
+  seconds. This is the baseline — the simplest vertical. Where the
+  LVR-aware and treasury-rebalance verticals start. Three more fixtures
+  shipped today; fifty more solver templates the community can build
+  on top. When the entry barrier drops to npm install, the long tail
+  finally gets built."

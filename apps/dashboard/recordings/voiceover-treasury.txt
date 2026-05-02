@@ -1,0 +1,62 @@
+Voiceover script — treasury rebalance demo (~90 seconds)
+========================================================
+
+Source fixture: src/fixtures/treasury.ts
+Replay URL:     http://localhost:4173/?replay=treasury
+
+Timeline (mm:ss):
+
+[00:00 – 00:08]  HERO BEFORE/AFTER lands.
+                 Don't speak yet. Let the eye parse the contrast:
+                 left side reads "4 weeks of infrastructure," right side
+                 reads "first fill in 30 seconds." Tagline blooms below.
+
+[00:08 – 00:30]  STAT KILLER + INTRO.
+
+  "Karpatkey reports Aave spent over a million dollars in execution
+  costs in 2025. Compound, similar. Frax, Optimism, ENS — every DAO
+  with a real treasury is leaking spread to aggregators they don't
+  even directly negotiate with. Today we close that gap."
+
+  "Filler SDK deploys a vertical UniswapX solver in npm install.
+  Tres archivos y un bond. Demo in ninety seconds."
+
+[00:30 – 01:00]  LIVE COUNTER tells the story.
+
+  "The treasury submits an intent. The DAO's own solver fills it.
+  Spread captured: three hundred and twelve dollars. Four eighty seven.
+  A thousand twenty four. Watch this number rise. Each one is a
+  real fill that would have paid spread to an external aggregator —
+  now it stays inside the same wallet that submitted the intent."
+
+[01:00 – 01:25]  JIT DEPTH chart proves the technical claim.
+
+  "Behind the scenes, the SDK queries our indexer for available
+  JIT depth — liquidity that the Trading API doesn't expose. The
+  solver computes the optimal tick range, submits an atomic JIT-add,
+  swap, JIT-remove, all in one transaction. That green band is our
+  contribution: capital we provided in-band so the trade lands at
+  the price the treasury wants."
+
+[01:25 – 01:35]  THREE FILES REVEAL — climax.
+                 Speak one beat per card:
+
+  "Strategy dot ts —"     [card 1 fades in]
+  "filler dot ts —"       [card 2]
+  "config dot ts —"       [card 3]
+  "y un bond."            [bond card with emerald glow]
+
+[01:35 – 01:30]  CLOSE.
+
+  "Three files, and one bond. Twelve thousand nine hundred and thirty
+  eight dollars internalised in the first ninety seconds of a quarterly
+  rebalance. Multiplied across the next fifty verticals where Wintermute
+  doesn't reach — that's where the next layer of execution agentic gets
+  built. When the barrier of entry drops to npm install."
+
+Notes for the operator
+----------------------
+- Pace: 130-150 wpm. Don't rush the tres-archivos beat — let each card breathe.
+- Tone: confident, not pitchy. The numbers carry the emotion; let them.
+- Pronunciation: "Karpatkey" (kar-pat-key), "Wintermute" (winter-mute).
+- The Spanish phrase "tres archivos y un bond" stays Spanish — don't anglicize.
