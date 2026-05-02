@@ -1,0 +1,5 @@
+dist/
+coverage/
+.lighthouseci/
+*.log
+.DS_Store
