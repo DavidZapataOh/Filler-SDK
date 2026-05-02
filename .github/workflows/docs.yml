@@ -1,0 +1,115 @@
+name: Docs
+
+on:
+  pull_request:
+    paths:
+      - 'apps/docs/**'
+      - 'packages/sdk/src/**'
+      - 'contracts/src/**'
+      - 'scripts/generate-api-docs.sh'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/docs/**'
+      - 'packages/sdk/src/**'
+      - 'contracts/src/**'
+      - 'scripts/generate-api-docs.sh'
+  workflow_dispatch: {}
+
+env:
+  FORCE_COLOR: '1'
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build docs site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.30
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium (for Vocs Mermaid prerender)
+        run: bunx playwright install chromium --with-deps
+
+      - name: Regenerate API docs (forge doc + TypeDoc)
+        run: ./scripts/generate-api-docs.sh
+
+      - name: Build docs site (Vocs)
+        run: bun run --filter '@filler-sdk/docs' build
+
+      - name: Verify Plan 02 quickstart claims still hold
+        run: bun run --filter '@filler-sdk/docs' test
+
+      - name: Capture build stats
+        run: |
+          echo "Total HTML pages: $(find apps/docs/dist -name '*.html' | wc -l)"
+          echo "SDK API pages:    $(find apps/docs/dist/api/sdk -name '*.html' 2>/dev/null | wc -l)"
+          echo "Contracts pages:  $(find apps/docs/dist/api/contracts -name '*.html' 2>/dev/null | wc -l)"
+          echo "Total dist size:  $(du -sh apps/docs/dist | cut -f1)"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: docs-${{ github.run_id }}
+          path: apps/docs/dist
+          retention-days: 14
+
+  # Vercel deploy is a separate job, gated behind operator-set secrets.
+  # Skips silently if VERCEL_TOKEN isn't configured (most PRs).
+  deploy:
+    name: Deploy to Vercel (production)
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Vercel secrets configured
+        id: gate
+        run: |
+          if [[ -n "${{ secrets.VERCEL_TOKEN }}" ]]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::VERCEL_TOKEN not configured — skipping deploy. Operator action: add the secret in repo settings."
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.gate.outputs.skip == 'false'
+        with:
+          name: docs-${{ github.run_id }}
+          path: apps/docs/dist
+
+      - uses: oven-sh/setup-bun@v2
+        if: steps.gate.outputs.skip == 'false'
+        with:
+          bun-version: 1.1.30
+
+      - name: Deploy to Vercel
+        if: steps.gate.outputs.skip == 'false'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: bunx vercel deploy apps/docs/dist --prod --token "$VERCEL_TOKEN" --yes

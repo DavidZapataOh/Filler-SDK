@@ -83,7 +83,10 @@ override_spacing = true
 wrap_comments = true
 ignore = ["lib/**"]
 
-# Doc generation
+# Doc generation — output ABSOLUTE-relative to contracts/, generated dir is
+# post-processed by `scripts/generate-api-docs.sh` to flatten the src/src/
+# nesting before publishing into apps/docs/pages/api/contracts/.
 [doc]
-out = "docs"
+out = "doc-out"
 title = "Filler SDK Contracts"
+ignore = ["script/**", "test/**"]

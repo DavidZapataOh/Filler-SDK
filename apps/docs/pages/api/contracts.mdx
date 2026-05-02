@@ -1,41 +1,71 @@
 # Contracts API Reference
 
-`Filler.sol` + `FillerBond.sol` — immutable, multisig-owned, MIT-licensed.
+`Filler.sol` + `FillerBond.sol` + libraries + errors. **Auto-generated from NatSpec by [`forge doc`](https://book.getfoundry.sh/reference/forge/forge-doc)**.
 
-:::tip[Sprint 06 Plan 04]
-Full forge-doc API reference — Sprint 06 Plan 04. This page is the skeleton.
-:::
+Re-generate: `./scripts/generate-api-docs.sh` (Sprint 06 Plan 04).
 
-## Filler.sol
+## Contracts
 
-### Solver entry points
+| Contract | Source | API page |
+|---|---|---|
+| `Filler` | [`contracts/src/Filler.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/Filler.sol) | [Filler →](/api/contracts/Filler.sol/contract.Filler) |
+| `FillerBond` | [`contracts/src/FillerBond.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/FillerBond.sol) | [FillerBond →](/api/contracts/FillerBond.sol/contract.FillerBond) |
 
-- `execute(SignedOrder calldata order, bytes calldata callbackData) external payable` — single-order fill
-- `executeBatch(SignedOrder[] calldata orders, bytes calldata callbackData) external payable` — batch fill
+## Libraries
 
-### Reactor callback (called by UniswapX Reactor)
+| Library | What | API page |
+|---|---|---|
+| `FillParams` (struct) | The fill parameter shape passed in `callbackData` | [struct →](/api/contracts/libraries/FillParams.sol/struct.FillParams) |
+| `FillParamsLib` | Validation logic for `FillParams` | [library →](/api/contracts/libraries/FillParams.sol/library.FillParamsLib) |
+| `DeltaSettler` | Helper for settling v4 currency deltas to zero | [library →](/api/contracts/libraries/DeltaSettler.sol/library.DeltaSettler) |
 
-- `reactorCallback(ResolvedOrder[] memory orders, bytes memory callbackData) external onlyReactor nonReentrant`
+## Custom errors
 
-### Unlock callback (called by v4 PoolManager)
+Every error is a typed Solidity custom error (saves ~50 gas vs `require` strings, decodable via the generated ABIs).
 
-- `unlockCallback(bytes calldata data) external onlyPoolManager returns (bytes memory)`
+| Error | Selector | What |
+|---|---|---|
+| [`NotReactor(address)`](/api/contracts/errors/Errors.sol/error.NotReactor) | `0x534a8993` | Unauthorized caller to `reactorCallback` |
+| [`NotPoolManager(address)`](/api/contracts/errors/Errors.sol/error.NotPoolManager) | `0x81489ec0` | Unauthorized caller to `unlockCallback` |
+| [`InvalidFillParams()`](/api/contracts/errors/Errors.sol/error.InvalidFillParams) | `0xd7db475a` | Validation failed in `FillParamsLib.validate` |
+| [`FillParamsLengthMismatch(uint256,uint256)`](/api/contracts/errors/Errors.sol/error.FillParamsLengthMismatch) | `0x3c4d8f0e` | `params.length != resolvedOrders.length` |
+| [`DeltasNotZero(int256,int256)`](/api/contracts/errors/Errors.sol/error.DeltasNotZero) | `0x06cdef57` | Delta-net-zero invariant violated post-settle |
+| [`Reentrancy()`](/api/contracts/errors/Errors.sol/error.Reentrancy) | `0xab143c06` | Transient reentrancy guard tripped |
+| [`ApprovalsAlreadySetup()`](/api/contracts/errors/Errors.sol/error.ApprovalsAlreadySetup) | `0x6a3cb312` | One-time `configureApprovals` already called |
+| [`UnsupportedCurrency(address)`](/api/contracts/errors/Errors.sol/error.UnsupportedCurrency) | `0x6ee9993b` | Currency not in `allowedCurrencies` whitelist |
+| [`InvalidAddress()`](/api/contracts/errors/Errors.sol/error.InvalidAddress) | `0xe6c4247b` | Constructor or admin function got `address(0)` |
+| [`NotEnoughStake()`](/api/contracts/errors/Errors.sol/error.NotEnoughStake) | `0xf0a42d4c` | Bond stake below requested unstake amount |
+| [`CooldownNotElapsed()`](/api/contracts/errors/Errors.sol/error.CooldownNotElapsed) | `0xa22b745e` | Withdraw before 7-day cooldown |
+| [`NoUnstakeRequest()`](/api/contracts/errors/Errors.sol/error.NoUnstakeRequest) | `0x16f68e4b` | Withdraw without prior `requestUnstake` |
+| [`InvalidEvidence()`](/api/contracts/errors/Errors.sol/error.InvalidEvidence) | `0xc9779e3c` | Slash with empty evidence hash |
+| [`AlreadySlashed()`](/api/contracts/errors/Errors.sol/error.AlreadySlashed) | `0x37233762` | Double-slash prevention |
+| [`ZeroStake()`](/api/contracts/errors/Errors.sol/error.ZeroStake) | `0x150a67e9` | `stake()` with `msg.value == 0` |
+| [`DirectETHRejected()`](/api/contracts/errors/Errors.sol/error.DirectETHRejected) | `0xfa26f2fa` | Direct ETH transfer (no `stake` call) rejected |
 
-### Admin (operational only — fill logic immutable)
+When an error fires on chain, decode the selector with `cast 4byte 0x...` or look it up here.
 
-- `configureApprovals(Currency[] calldata currencies) external onlyOwner` — one-time setup
-- `allowCurrency(Currency currency) external onlyOwner`
-- `disallowCurrency(Currency currency) external onlyOwner`
+## Compilation settings
 
-## FillerBond.sol
+| Setting | Value | Why |
+|---|---|---|
+| Solidity | `0.8.30` | Latest stable, has transient storage (`bool transient locked`) |
+| EVM target | `prague` | Mainnet-deployed Pectra activated |
+| Optimizer | `enabled, runs = 1_000_000` | Long-running contracts (immutable, no upgrades) |
+| via_ir | `true` | Required for stack-deep callbacks |
+| `bytecode_hash` | `none` | Reproducible builds |
 
-- `stake(address filler) external payable`
-- `requestUnstake(address filler, uint256 amount) external` — starts 7-day cooldown
-- `withdraw(address filler) external` — claim after cooldown
-- `slash(address filler, address staker, uint256 amount, bytes32 evidenceHash) external onlyOwner`
-- `stakeOf(address filler, address staker) external view returns (uint256)`
+## Deployed addresses
+
+Per chain, in `contracts/deployments/<chainId>.json` after `forge script Deploy.s.sol`. The deterministic CREATE addresses against anvil's well-known account #0 are:
+
+| Chain | Filler | FillerBond |
+|---|---|---|
+| `foundry` (31337, mainnet fork) | `0xC489d11D03B2999A6ba568e02E0b95eFc58b6A34` | `0x559Bb2F2beb43246bA63057F3750b742b92dBBf9` |
+| Production chains | TBD post-audit | TBD post-audit |
 
 ## Source
 
-- [`contracts/src/Filler.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/Filler.sol)
-- [`contracts/src/FillerBond.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/FillerBond.sol)
+- All contracts: [`contracts/src/`](https://github.com/filler-sdk/filler-sdk/tree/main/contracts/src)
+- Errors: [`contracts/src/errors/Errors.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/errors/Errors.sol)
+- Tests + invariants: [`contracts/test/`](https://github.com/filler-sdk/filler-sdk/tree/main/contracts/test)
+- Foundry config: [`contracts/foundry.toml`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/foundry.toml)

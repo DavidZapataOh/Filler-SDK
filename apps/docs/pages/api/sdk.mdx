@@ -1,16 +1,20 @@
 # SDK API Reference
 
-`@filler-sdk/sdk` — TypeScript solver SDK.
+`@filler-sdk/sdk` — TypeScript solver SDK. Curated overview; see source files for the full TSDoc.
 
-:::tip[Sprint 06 Plan 04]
-Full TypeDoc-generated API reference — Sprint 06 Plan 04. This page is the skeleton.
-:::
+## Entry points
 
-## Top-level entry points
+The package ships four sub-paths. Each is independently tree-shakable.
 
-### `createFiller(opts)` / `createFillerFromPrivateKey(opts)`
+| Sub-path | What's there | Source |
+|---|---|---|
+| `@filler-sdk/sdk` | `createFiller`, `createFillerFromPrivateKey`, all public types + errors | [`packages/sdk/src/index.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/index.ts) |
+| `@filler-sdk/sdk/bond` | `BondClient` (standalone bond ops without full Filler handle) | [`packages/sdk/src/bond/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/sdk/src/bond) |
+| `@filler-sdk/sdk/testing` | `createMockFiller`, `mockFillResult`, anvil helpers, fixtures | [`packages/sdk/src/testing/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/sdk/src/testing) |
+| `@filler-sdk/sdk/keeperhub` | `KeeperHubClient` for MEV-protected fill broadcasting | [`packages/sdk/src/keeperhub/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/sdk/src/keeperhub) |
+| `@filler-sdk/sdk/abis` | Auto-generated ABIs from `Filler.sol` + `FillerBond.sol` | [`packages/sdk/src/abis/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/sdk/src/abis) |
 
-Construct a `Filler` handle.
+## Top-level handle (most common)
 
 ```ts
 import { createFillerFromPrivateKey } from '@filler-sdk/sdk';
@@ -22,27 +26,66 @@ const filler = createFillerFromPrivateKey({
   addresses: { filler, fillerBond, reactor, poolManager },
   indexer: { baseUrl: 'http://localhost:42069' },
 });
+
+filler.subscribeIntents(filter, handler);
+const params = await filler.prepareFill(intent);
+const result = await filler.submitFill(intent, params);
+await filler.bond.stake(amount);
+await filler.shutdown();
 ```
 
-### `filler.subscribeIntents(filter, handler)`
+Full TSDoc on every public name lives in the source. The hackathon docs site is curated; full TypeDoc auto-generation is a post-hackathon polish (one-line `bunx typedoc` per the [generate-api-docs script](https://github.com/filler-sdk/filler-sdk/blob/main/scripts/generate-api-docs.sh)).
 
-Subscribe to intent events. Today's source is `chainFillIntentSource` (observational, post-settle); a `tradingApiIntentSource` is roadmap pending [F-64](/resources/feedback).
+## Public surface — by category
 
-### `filler.prepareFill(intent)` / `filler.submitFill(intent, params, opts)`
+### Construction
+- `createFiller(opts)` — constructor with explicit viem clients
+- `createFillerFromPrivateKey(opts)` — convenience for tests + CI + scripts (used by [`bun run e2e:fork`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/scripts/e2e-fork.ts))
+- `createMockFiller(opts)` — no-RPC mock for local development + demo mode (used by [`examples/treasury-rebalance`](https://github.com/filler-sdk/filler-sdk/tree/main/examples/treasury-rebalance) `DEMO_MODE=true`)
 
-Prepare + submit fills.
+### Subscribing to intents
+- `Filler.subscribeIntents(filter, handler)` — subscribe to intent stream. Today's source is `chainFillIntentSource` (observational); see [F-64](/resources/feedback) for the Trading API gap.
+- `IntentFilter` — filter by reactors / chain / strategy
 
-### `filler.bond.stake(amount)` / `filler.bond.requestUnstake(amount)` / `filler.bond.withdraw()`
+### Filling
+- `Filler.prepareFill(intent)` — query indexer + calibrate ticks → `FillParams | null`
+- `Filler.submitFill(intent, params, opts)` — broadcast `Filler.execute` with calldata
+- `FillParams` — the shape the on-chain Filler expects (matches `contracts/src/libraries/FillParams.sol`)
 
-Bond client.
+### Bond
+- `BondClient.stake(amount)` / `BondClient.requestUnstake(amount)` / `BondClient.withdraw()` / `BondClient.stakeOf(filler, staker)`
+- See [Bond Mechanism](/docs/concepts/bond) for the full lifecycle.
 
-## Sub-paths
+### Errors (typed, narrowable)
 
-- `@filler-sdk/sdk/testing` — `createMockFiller`, `mockFillResult`
-- `@filler-sdk/sdk/bond` — standalone `BondClient`
-- `@filler-sdk/sdk/keeperhub` — `KeeperHubClient`
-- `@filler-sdk/sdk/abis` — auto-generated ABIs
+```ts
+import { FillerError, BroadcastFailedError, IntentExpiredError /* ... */ } from '@filler-sdk/sdk';
+
+try {
+  await filler.submitFill(intent, params);
+} catch (err) {
+  if (err instanceof IntentExpiredError) { /* handle */ }
+  else if (err instanceof BroadcastFailedError) { /* handle */ }
+  else throw err;
+}
+```
+
+Full hierarchy: `FillerError` → `BroadcastFailedError` | `IndexerError` | `IntentExpiredError` | `InsufficientLiquidityError` | `RPCError` | `SimulationRevertedError` | `TimeoutError` | `ConfigInvalidError`. Source: [`packages/sdk/src/errors.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/errors.ts).
+
+## Generating full TypeDoc locally
+
+For developers who want the auto-generated full reference:
+
+```bash
+./scripts/generate-api-docs.sh
+# → apps/docs/pages/api/sdk-generated/  (98 markdown files; not published in hackathon docs)
+```
+
+Hackathon docs ship curated. Post-hackathon, the auto-generated pages will be wired into the sidebar after MDX-compatibility cleanup of TypeDoc output.
 
 ## Source
 
-[`packages/sdk/src/index.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/index.ts) — every exported name is part of the stable API.
+- Public surface: [`packages/sdk/src/index.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/index.ts)
+- Public types: [`packages/sdk/src/types.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/types.ts)
+- Error hierarchy: [`packages/sdk/src/errors.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/errors.ts)
+- Tests as usage examples: [`packages/sdk/test/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/sdk/test)
