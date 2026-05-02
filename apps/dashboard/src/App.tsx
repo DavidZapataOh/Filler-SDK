@@ -1,17 +1,19 @@
 /**
- * Dashboard root. Plan 01 ships the page chrome + the HeroCounter shell with
- * a static placeholder. Plans 02-05 attach to this layout:
+ * Dashboard root. Plan 02 ships the Hero (before/after split-screen) above
+ * the live capture section. Plans 03/04/05/06/07 attach to the placeholder
+ * grid + the LiveCaptured section.
  *
- *   - Plan 02 — Hero before/after (lands above the counter)
- *   - Plan 03 — Counter wired to SSE
- *   - Plan 04 — JIT depth chart (below the counter)
- *   - Plan 05 — Three Files Reveal (sidebar)
+ *   - Plan 02 — Hero before/after (THIS plan, lands at top)
+ *   - Plan 03 — LiveCaptured wired to SSE (replaces static placeholder)
+ *   - Plan 04 — JIT depth chart (placeholder grid)
+ *   - Plan 05 — Three Files Reveal (placeholder grid)
+ *   - Plan 06 — SSE hooks (drives Plan 03 / 04 state)
+ *   - Plan 07 — Replay mode (deterministic offline demo)
  *
  * Layout decisions (60-30-10 reminder):
  *   - 60% canvas: zinc-950 page bg + zinc-900-ish surface for cards.
  *   - 30% text: zinc-200/400 — readable without screaming.
- *   - 10% money: emerald reserved for HeroCounter halo + future "captured"
- *     deltas in the live feed.
+ *   - 10% money: emerald reserved for the money counters.
  *
  * Borders > extra background layers — design.txt: "sometimes a simple
  * border is the best solution."
@@ -19,6 +21,7 @@
 
 import { ArrowUpRight, Github } from 'lucide-react';
 
+import { Hero } from './components/Hero/Hero';
 import { HeroCounter } from './components/HeroCounter';
 import { LiveBadge } from './components/LiveBadge';
 
@@ -26,8 +29,9 @@ export function App(): JSX.Element {
   return (
     <div className="min-h-screen bg-[--color-canvas]">
       <Header />
-      <main className="mx-auto flex max-w-5xl flex-col gap-12 px-6 pt-8 pb-24 sm:px-8">
-        <HeroSection />
+      <Hero />
+      <main className="mx-auto flex max-w-5xl flex-col gap-12 px-6 pt-16 pb-24 sm:px-8">
+        <LiveCapturedSection />
         <PlaceholderGrid />
       </main>
       <Footer />
@@ -40,7 +44,7 @@ export function App(): JSX.Element {
 function Header(): JSX.Element {
   return (
     <header className="border-b border-[--color-border-subtle]">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 sm:px-8">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 sm:px-8">
         <div className="flex items-center gap-3">
           <BrandMark />
           <span className="text-sm font-semibold text-[--color-text-default]">Filler SDK</span>
@@ -84,18 +88,21 @@ function BrandMark(): JSX.Element {
   );
 }
 
-// === Hero ================================================================
+// === Live capture (Plan 03 wires SSE) ====================================
 
-function HeroSection(): JSX.Element {
+function LiveCapturedSection(): JSX.Element {
   return (
-    <section aria-labelledby="hero-title" className="flex flex-col items-center gap-2 text-center">
-      <h1
-        id="hero-title"
+    <section
+      aria-labelledby="live-capture-title"
+      className="flex flex-col items-center gap-2 text-center"
+    >
+      <h2
+        id="live-capture-title"
         className="text-balance text-2xl font-semibold tracking-tight text-[--color-text-default] sm:text-3xl"
       >
         DAO treasuries internalising their own spread,{' '}
         <span className="text-[--color-text-muted]">live.</span>
-      </h1>
+      </h2>
       <p className="max-w-2xl text-sm text-[--color-text-muted] sm:text-base">
         Every intent submitted by a self-filling DAO keeps the spread that would otherwise leave to
         an external aggregator. Watch the cumulative capture in real time.
@@ -107,15 +114,11 @@ function HeroSection(): JSX.Element {
   );
 }
 
-// === Placeholder grid (Plans 02 / 04 / 05 land here) =====================
+// === Placeholder grid (Plans 03 / 04 / 05 land here) =====================
 
 function PlaceholderGrid(): JSX.Element {
   return (
     <section aria-label="Visualisation slots" className="grid gap-6 sm:grid-cols-2">
-      <Card
-        title="Before / after"
-        body="Plan 02 lands the 4-weeks-of-infra vs 30s-with-Filler-SDK split."
-      />
       <Card
         title="JIT depth"
         body="Plan 04 binds the live area chart from the indexer's depth feed."
@@ -125,6 +128,10 @@ function PlaceholderGrid(): JSX.Element {
         body="Plan 05 reveals strategy.ts + filler.ts + stake.ts side-by-side."
       />
       <Card title="Recent fills" body="Plan 03 streams every spread-captured event as it lands." />
+      <Card
+        title="Replay mode"
+        body="Plan 07 ships deterministic offline fixtures for demo recording."
+      />
     </section>
   );
 }
@@ -147,7 +154,7 @@ function Card({ title, body }: CardProps): JSX.Element {
   return (
     <div className="rounded-lg border border-[--color-border-subtle] bg-[--color-surface-1] p-5 transition hover:border-[--color-border-default]">
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-[--color-text-default]">{title}</h2>
+        <h3 className="text-sm font-semibold text-[--color-text-default]">{title}</h3>
         <ArrowUpRight aria-hidden="true" className="size-4 text-[--color-text-faint]" />
       </div>
       <p className="text-sm text-[--color-text-muted]">{body}</p>
