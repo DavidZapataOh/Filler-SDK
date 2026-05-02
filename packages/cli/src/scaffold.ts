@@ -1,35 +1,54 @@
 /**
- * `scaffoldProject` — file-system orchestration.
+ * `scaffoldProject` — file-system orchestration with real templates.
  *
- * **Plan 01 STUB**: creates the target directory + writes minimal placeholder
- * files (`package.json`, `README.md`, `.gitignore`, `.env.example`, a stub
- * `src/index.ts`) so the lifecycle works end-to-end and the test suite can
- * verify a real project directory was produced.
+ * Plan 02 swap from Plan 01's string-builder stub: now reads templates from
+ * disk under `templates/_base/` (shared) + `templates/<vertical>/` (overlay)
+ * and renders them through `render()` from `./render`. Atomic cleanup on
+ * failure — but only nuke the dir if WE created it.
  *
- * **Plan 02** swaps the body for a real template engine that:
- *   - Reads from `templates/<vertical>/` (Handlebars or similar).
- *   - Substitutes project name, chain, addresses, KeeperHub config.
- *   - Renames `_gitignore` → `.gitignore`, `_env.example` → `.env.example`
- *     (npm strips dotfiles from packed tarballs unless renamed).
- *   - Validates the output project compiles (`bun install && bun run build`
- *     exit 0) — the Plan 01 §2 acceptance criterion.
+ * Resolution: at dev time, `import.meta.url` points at
+ * `packages/cli/src/scaffold.ts`; `../templates` resolves to
+ * `packages/cli/templates/`. After tsup builds `dist/cli.js`, the same
+ * relative path resolves to `packages/cli/templates/` — so the templates dir
+ * is found whether the user runs `bun src/cli.ts` (dev) or
+ * `node dist/cli.js` (prod).
  *
- * The `ScaffoldOptions` shape is locked in Plan 01 so Plan 02's swap is a
- * single-file change.
+ * **Path traversal safety**: all destination paths flow through
+ * `path.join(targetDir, …)` where the `…` parts come from `readdir` of files
+ * we ship. The CLI's templates dir is part of the package; it's not user-
+ * controlled. The only user-controlled component is `targetDir` itself,
+ * which already exists+is checked for overwrite by the CLI before scaffold.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+import { render, type TemplateValue } from './render';
 import type { ChainName } from './types';
 import type { VerticalKey } from './validation';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Resolves to `packages/cli/templates/` whether running from `src/` (dev) or
+ * `dist/` (after build). Both layouts have a sibling `templates/` directory.
+ */
+const TEMPLATES_DIR = resolve(HERE, '..', 'templates');
+
+const BASE_TEMPLATE = '_base';
+const TPL_EXT = '.tpl';
+/** Files prefixed with `_` get renamed to `.<rest>`. npm strips dotfiles
+ *  from packed tarballs unless they're stored with this safe prefix. */
+const DOTFILE_PREFIX = '_';
 
 export interface ScaffoldOptions {
   /** Absolute path of the directory to create. Must NOT already exist. */
   targetDir: string;
   /** npm package name (also the directory basename). */
   projectName: string;
-  /** Solver vertical — picks the template variant. */
+  /** Solver vertical — picks the template overlay. */
   vertical: VerticalKey;
   /** Chain to operate on. */
   chain: ChainName;
@@ -37,178 +56,147 @@ export interface ScaffoldOptions {
   indexerUrl: string;
   /** Whether to wire KeeperHub MEV-protected routing into the template. */
   useKeeperHub: boolean;
-  /** Whether the CLI should `git init` after writing files. */
+  /** Whether the CLI should `git init` after writing files (handled by caller). */
   initGit: boolean;
 }
 
-const STUB_NOTICE_BANNER = `// =============================================================================
-//  PLACEHOLDER — Plan 01 of Sprint 04 ships the CLI scaffold lifecycle.
-//  Plan 02 fills the templates with the real solver code.
-// =============================================================================
-`;
-
+/**
+ * Scaffold a project. Idempotent on partial-failure: if any step throws, the
+ * target dir is removed (only if we created it; we never `rm -rf` a
+ * pre-existing dir).
+ */
 export async function scaffoldProject(opts: ScaffoldOptions): Promise<void> {
-  await mkdir(opts.targetDir, { recursive: false });
-  await mkdir(resolve(opts.targetDir, 'src'), { recursive: true });
-
-  await writeFile(
-    resolve(opts.targetDir, 'package.json'),
-    renderStubPackageJson(opts) + '\n',
-    'utf-8',
-  );
-
-  await writeFile(
-    resolve(opts.targetDir, 'README.md'),
-    renderStubReadme(opts),
-    'utf-8',
-  );
-
-  await writeFile(
-    resolve(opts.targetDir, '.gitignore'),
-    renderStubGitignore(),
-    'utf-8',
-  );
-
-  await writeFile(
-    resolve(opts.targetDir, '.env.example'),
-    renderStubEnvExample(opts),
-    'utf-8',
-  );
-
-  await writeFile(
-    resolve(opts.targetDir, 'src', 'index.ts'),
-    renderStubIndexTs(opts),
-    'utf-8',
-  );
-}
-
-// === Renderers — plain string literals for Plan 01; Plan 02 swaps for
-//                templating ============================================
-
-function renderStubPackageJson(opts: ScaffoldOptions): string {
-  const pkg = {
-    name: opts.projectName,
-    version: '0.0.0',
-    description: `Filler SDK solver — ${opts.vertical} on ${opts.chain}`,
-    license: 'MIT',
-    type: 'module',
-    scripts: {
-      start: 'bun src/index.ts',
-      dev: 'bun --hot src/index.ts',
-      typecheck: 'tsc --noEmit',
-    },
-    dependencies: {
-      '@filler-sdk/sdk': '^0.0.0',
-      viem: '^2.21.0',
-    },
-    devDependencies: {
-      '@types/node': '^25.0.0',
-      typescript: '^5.6.0',
-    },
-    engines: { node: '>=20' },
-  };
-  return JSON.stringify(pkg, null, 2);
-}
-
-function renderStubReadme(opts: ScaffoldOptions): string {
-  return `# ${opts.projectName}
-
-Filler SDK solver — \`${opts.vertical}\` vertical on \`${opts.chain}\`.
-
-> ${stubNotice('Plan 01 of Sprint 04 scaffolded this skeleton. Real solver code lands in Plan 02 templates.')}
-
-## Quickstart
-
-\`\`\`bash
-cp .env.example .env
-# Set SOLVER_PRIVATE_KEY and RPC_URL in .env
-bun install
-bun start
-\`\`\`
-
-## Configuration
-
-| Variable | Description | Default |
-|---|---|---|
-| \`SOLVER_PRIVATE_KEY\` | 0x-prefixed 32-byte hex private key | (required) |
-| \`RPC_URL\` | RPC endpoint for ${opts.chain} | (required) |
-| \`INDEXER_URL\` | JIT-hints indexer base URL | \`${opts.indexerUrl}\` |
-${opts.useKeeperHub ? `| \`KEEPERHUB_API_KEY\` | KeeperHub bearer token (MEV-protected routing) | (required) |\n` : ''}
-
-## Documentation
-
-- [Filler SDK docs](https://docs.filler-sdk.xyz) — Sprint 06 deliverable.
-- [SDK reference](https://github.com/filler-sdk/filler-sdk/tree/main/packages/sdk) — auto-generated from JSDoc.
-- [JIT-hints indexer](https://github.com/filler-sdk/filler-sdk/tree/main/packages/jit-hints) — self-host the indexer for private depth queries.
-
-## License
-
-MIT
-`;
-}
-
-function renderStubGitignore(): string {
-  return [
-    'node_modules',
-    'dist',
-    '.env',
-    '.env.local',
-    '.env.*.local',
-    '*.log',
-    '.DS_Store',
-    'coverage',
-    '.turbo',
-    '.cache',
-    '',
-  ].join('\n');
-}
-
-function renderStubEnvExample(opts: ScaffoldOptions): string {
-  const lines = [
-    '# Solver wallet — 0x-prefixed 32-byte hex private key.',
-    '# Anvil burner key shown for reference; replace with your real key.',
-    '#   anvil[0]: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80',
-    'SOLVER_PRIVATE_KEY=',
-    '',
-    `# RPC endpoint for ${opts.chain}. Must be https:// (http:// only allowed for localhost).`,
-    'RPC_URL=',
-    '',
-    `# JIT-hints indexer URL. Self-host via the @filler-sdk/jit-hints package.`,
-    `INDEXER_URL=${opts.indexerUrl}`,
-    '',
-  ];
-  if (opts.useKeeperHub) {
-    lines.push(
-      '# KeeperHub bearer token for MEV-protected fill routing.',
-      '# Obtain from your KeeperHub dashboard at signup.',
-      'KEEPERHUB_API_KEY=',
-      'KEEPERHUB_BASE_URL=https://api.keeperhub.example.com',
-      '',
+  if (!existsSync(TEMPLATES_DIR)) {
+    throw new Error(
+      `templates directory not found: ${TEMPLATES_DIR}. Run \`bun run build\` first if shipping the CLI from a published package.`,
     );
   }
-  return lines.join('\n');
+
+  const verticalDir = resolve(TEMPLATES_DIR, opts.vertical);
+  if (!existsSync(verticalDir)) {
+    throw new Error(
+      `template not found for vertical "${opts.vertical}". Available: ${listKnownVerticals().join(', ')}`,
+    );
+  }
+
+  // Track whether WE created the target dir. If the user pre-existed it (and
+  // somehow slipped past the CLI's check — race condition) we must not nuke
+  // their files on cleanup.
+  const createdNew = !existsSync(opts.targetDir);
+
+  const vars = buildTemplateVars(opts);
+
+  try {
+    await mkdir(opts.targetDir, { recursive: false });
+
+    // Copy + render `_base/` first.
+    await copyTree(resolve(TEMPLATES_DIR, BASE_TEMPLATE), opts.targetDir, vars);
+
+    // Then overlay vertical-specific files (files with the same path
+    // overwrite the base). Render also applied here.
+    await copyTree(verticalDir, opts.targetDir, vars);
+  } catch (err) {
+    if (createdNew) {
+      try {
+        await rm(opts.targetDir, { recursive: true, force: true });
+      } catch {
+        // Cleanup failure is secondary — surface the original.
+      }
+    }
+    throw err;
+  }
 }
 
-function renderStubIndexTs(opts: ScaffoldOptions): string {
-  return `${STUB_NOTICE_BANNER}
-// Solver entry point — real implementation lands in Plan 02 templates.
-//
-// Vertical:    ${opts.vertical}
-// Chain:       ${opts.chain}
-// KeeperHub:   ${opts.useKeeperHub ? 'enabled' : 'disabled'}
-//
-// Once Plan 02 ships the real templates, this file will:
-//   1. Read SOLVER_PRIVATE_KEY + RPC_URL + INDEXER_URL from .env.
-//   2. Build the Filler via createFillerFromPrivateKey().
-//   3. Subscribe to UniswapX intents via filler.subscribeIntents.
-//   4. Compute FillParams via filler.prepareFill.
-//   5. Submit fills via filler.submitFill.
+// === Internals ============================================================
 
-console.log('Hello from ${opts.projectName} — your solver scaffold is wired.');
-console.log('See README.md for next steps.');
-`;
+interface TemplateVars extends Record<string, TemplateValue> {
+  projectName: string;
+  vertical: string;
+  chain: string;
+  indexerUrl: string;
+  rpcUrl: string;
+  useKeeperHub: boolean;
+  currentYear: number;
 }
 
-function stubNotice(text: string): string {
-  return `**Stub:** ${text}`;
+function buildTemplateVars(opts: ScaffoldOptions): TemplateVars {
+  return {
+    projectName: opts.projectName,
+    vertical: opts.vertical,
+    chain: opts.chain,
+    indexerUrl: opts.indexerUrl,
+    rpcUrl: getDefaultRpc(opts.chain),
+    useKeeperHub: opts.useKeeperHub,
+    currentYear: new Date().getFullYear(),
+  };
+}
+
+async function copyTree(
+  srcDir: string,
+  destDir: string,
+  vars: TemplateVars,
+): Promise<void> {
+  if (!existsSync(srcDir)) return; // overlay might be empty for a vertical
+
+  const entries = await readdir(srcDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = join(srcDir, entry.name);
+
+    // Strip `.tpl` extension + rename `_<name>` → `.<name>`.
+    let outName = entry.name;
+    if (outName.endsWith(TPL_EXT)) {
+      outName = outName.slice(0, -TPL_EXT.length);
+    }
+    if (outName.startsWith(DOTFILE_PREFIX)) {
+      outName = '.' + outName.slice(DOTFILE_PREFIX.length);
+    }
+
+    const destPath = join(destDir, outName);
+
+    if (entry.isDirectory()) {
+      await mkdir(destPath, { recursive: true });
+      await copyTree(srcPath, destPath, vars);
+      continue;
+    }
+
+    if (entry.name.endsWith(TPL_EXT)) {
+      // Render via the template engine.
+      const content = await readFile(srcPath, 'utf-8');
+      const rendered = render(content, vars);
+      await writeFile(destPath, rendered, 'utf-8');
+    } else {
+      // Plain file — copy bytes as-is (preserves permissions on POSIX).
+      await cp(srcPath, destPath);
+    }
+  }
+}
+
+// === Default RPC URLs (mirror jit-hints/env.ts canonical values) =========
+
+/**
+ * Public-node RPC URLs per chain. Mirrors `packages/jit-hints/src/env.ts`
+ * defaults so the scaffold + indexer share a source of truth.
+ *
+ * For testnets / Foundry we point at the conventional defaults; users
+ * typically override via `RPC_URL` in `.env`.
+ */
+export function getDefaultRpc(chain: ChainName): string {
+  const RPCS: Readonly<Record<ChainName, string>> = {
+    mainnet: 'https://eth.publicnode.com',
+    unichain: 'https://unichain.publicnode.com',
+    base: 'https://base.publicnode.com',
+    arbitrum: 'https://arbitrum.publicnode.com',
+    optimism: 'https://optimism.publicnode.com',
+    sepolia: 'https://ethereum-sepolia.publicnode.com',
+    unichainSepolia: 'https://sepolia.unichain.org',
+    foundry: 'http://localhost:8545',
+  };
+  return RPCS[chain];
+}
+
+function listKnownVerticals(): readonly string[] {
+  // We hardcode the four known verticals (matching `validation.ts:VERTICALS`)
+  // for the error message. Drift between this list and the real templates
+  // dir is caught by the integration tests.
+  return ['simple-jit', 'lvr-aware', 'treasury-rebalance', 'custom'];
 }

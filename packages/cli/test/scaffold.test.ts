@@ -131,7 +131,7 @@ describe('scaffoldProject (Plan 01 stub)', () => {
     ).rejects.toThrow();
   });
 
-  test('src/index.ts mentions the chosen vertical + chain in comments', async () => {
+  test('simple-jit src/index.ts renders with chosen chain + KeeperHub block', async () => {
     await scaffoldProject({
       targetDir,
       projectName: 'my-test-solver',
@@ -142,8 +142,24 @@ describe('scaffoldProject (Plan 01 stub)', () => {
       initGit: false,
     });
     const idx = readFileSync(join(targetDir, 'src/index.ts'), 'utf-8');
-    expect(idx).toContain('simple-jit');
     expect(idx).toContain('optimism');
-    expect(idx).toContain('enabled'); // KeeperHub status comment
+    expect(idx).toContain('keeperHub:');
+    expect(idx).toContain('apiKey: env.KEEPERHUB_API_KEY');
+    expect(idx).toContain('my-test-solver');
+  });
+
+  test('simple-jit src/index.ts WITHOUT KeeperHub omits the block', async () => {
+    await scaffoldProject({
+      targetDir,
+      projectName: 'my-test-solver',
+      vertical: 'simple-jit',
+      chain: 'unichain',
+      indexerUrl: 'http://localhost:42069',
+      useKeeperHub: false,
+      initGit: false,
+    });
+    const idx = readFileSync(join(targetDir, 'src/index.ts'), 'utf-8');
+    expect(idx).not.toContain('keeperHub:');
+    expect(idx).not.toContain('KEEPERHUB_API_KEY');
   });
 });
