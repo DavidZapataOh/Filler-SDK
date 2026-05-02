@@ -1,0 +1,42 @@
+# Roadmap
+
+Where Filler SDK is going. Honest, dated, with explicit dependencies on Uniswap-side work.
+
+:::tip[Sprint 06 Plan 06]
+Full roadmap — Sprint 06 Plan 06. This page is the skeleton.
+:::
+
+## Q3 2026 — post-hackathon
+
+- **Mainnet deploy** of `Filler.sol` + `FillerBond.sol` to Ethereum mainnet + Unichain (depends on audit)
+- **Trail of Bits / Spearbit audit** — pre-mainnet
+- **Trading API IntentSource** — `tradingApiIntentSource` SDK adapter, gated on Uniswap publishing wire format ([F-15](/resources/feedback), [F-64](/resources/feedback))
+- **Bug bounty on Immunefi** — post-mainnet
+
+## Q4 2026
+
+- **Bond v1 trustless slash** — community-submittable evidence, deterministic on-chain verification (replaces ADR 0002 owner-slash)
+- **More verticals** — vault-as-solver template, KYA-restricted template, atomic-with-yield template
+- **Hook detection automation** — pre-fill simulation detects adversarial hooks, omits problematic pools
+
+## Q1 2027
+
+- **Managed service tier** (optional) — for teams that prefer not to self-host the indexer + dashboard
+- **Backtesting harness GA** — fork-mainnet backtest of N-month strategy windows
+- **Multi-chain solver coordination** — single solver wallet, multi-chain inventory
+
+## Dependencies on Uniswap
+
+- **F-15 / F-64** — Trading API public wire format → unblocks `tradingApiIntentSource` in SDK
+- **F-25** — private-routing hook → unblocks default MEV protection
+
+## How we prioritize
+
+The four Filler SDK pillars (PRINCIPLES.md):
+
+1. Security first
+2. Production-grade tooling
+3. Observability day-1
+4. Honest documentation
+
+Anything that violates a pillar gets bumped to a later quarter.

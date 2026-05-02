@@ -1,0 +1,27 @@
+# Bond Mechanism
+
+`FillerBond.sol` — a stake/slash bond contract for filler accountability. Stakers deposit ETH; if the filler commits a slashable violation, the owner can slash with on-chain evidence.
+
+:::tip[Sprint 06 Plan 03]
+Full conceptual deep-dive — Sprint 06 Plan 03. This page is the skeleton.
+:::
+
+## v0 trust model
+
+- **Owner-controlled slash** with evidence hash — see [ADR 0002](/resources/adrs)
+- **7-day unstake cooldown** to bound slashing windows
+- **Multisig ownership** from day 1 (no EOA owner)
+- **Trustless slash** is v1 roadmap — community-submittable evidence, deterministic on-chain verification
+
+## The lifecycle
+
+1. Operator deploys `Filler.sol` + `FillerBond.sol` (immutable, no upgrade)
+2. Stakers (operator or external delegators) call `bond.stake(filler)` with ETH
+3. The Filler operates: every fill is observable on chain
+4. If a slashable violation occurs (Reactor event evidence), owner calls `bond.slash(...)`
+5. Stakers can `requestUnstake` → wait 7 days → `withdraw`
+
+## Next
+
+- [Bond Lifecycle Guide](/docs/guides/bond) — operational walkthrough
+- [API Reference: Contracts](/api/contracts) — function signatures

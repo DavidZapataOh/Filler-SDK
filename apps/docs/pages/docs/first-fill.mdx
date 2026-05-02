@@ -1,0 +1,31 @@
+# First Fill in 5 Minutes
+
+Step-by-step, first fill on a mainnet fork. Narrated for beginners.
+
+:::tip[Sprint 06 Plan 02]
+Narrated walkthrough — Sprint 06 Plan 02. This page is the skeleton; today the actual flow is in [`bun run e2e:fork`](/docs/quickstart).
+:::
+
+## What you'll see
+
+1. anvil fork comes up
+2. Filler + FillerBond deploy
+3. v4 pool initialized + seeded with liquidity
+4. Wallets funded
+5. Bond staked
+6. Intent signed (Permit2 + cosigner)
+7. `Filler.execute` lands on chain
+8. USDC swapped to WETH; JIT spread captured
+
+## See it run
+
+```bash
+bun run e2e:fork
+```
+
+Total runtime: ~25 seconds.
+
+## Next
+
+- [Atomic JIT Pattern](/docs/concepts/atomic-jit) — the on-chain mechanism
+- [Deploying a Solver](/docs/guides/deploy) — your own solver project

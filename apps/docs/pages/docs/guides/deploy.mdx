@@ -1,0 +1,37 @@
+# Deploying a Solver
+
+Step-by-step: from `npx create-filler` to your solver online + filling intents.
+
+:::tip[Sprint 06 Plan 04]
+Full deployment guide — Sprint 06 Plan 04. This page is the skeleton.
+:::
+
+## TL;DR
+
+```bash
+npx create-filler my-solver
+cd my-solver
+bun install
+# edit .env with your keys + chain
+bun stake 100000000000000000  # 0.1 ETH
+bun start
+```
+
+## What `create-filler` ships
+
+- `src/filler.ts` — main entry, branches on `DEMO_MODE`
+- `src/strategy.ts` — `filter(intent) → bool` + `decide(intent, params) → bool`
+- `src/config.ts` — Zod-validated env
+- `src/stake.ts` — one-time bond setup
+- `src/dashboardEmitter.ts` — SSE server for the live counter
+
+The whole structure is reviewable in [`packages/cli/templates/treasury-rebalance/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/cli/templates/treasury-rebalance).
+
+## Required env vars
+
+See [`.env.example`](https://github.com/filler-sdk/filler-sdk/blob/main/examples/treasury-rebalance/.env) — `SOLVER_PRIVATE_KEY`, `RPC_URL`, `FILLER_ADDRESS`, `BOND_ADDRESS`, `REACTOR_ADDRESS`, `POOL_MANAGER_ADDRESS`, `INDEXER_URL`.
+
+## Next
+
+- [Bond Lifecycle Guide](/docs/guides/bond) — staking + slashing + withdrawal
+- [Production Checklist](/docs/guides/production) — what to verify before going live

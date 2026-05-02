@@ -1,0 +1,56 @@
+# Treasury Rebalance — Hero Example
+
+A DAO whose only solver is itself. Every rebalance intent the treasury submits gets filled by THIS solver — keeping the spread inside the DAO instead of paying it to an external aggregator.
+
+:::tip[Sprint 06 Plan 05]
+Full walkthrough — Sprint 06 Plan 05. This page is the skeleton; the live example is shippable today.
+:::
+
+## The example
+
+[`examples/treasury-rebalance/`](https://github.com/filler-sdk/filler-sdk/tree/main/examples/treasury-rebalance) — workspace-linked, runs against an anvil mainnet fork.
+
+## Strategy
+
+```ts
+import type { Address } from 'viem';
+import type { FillParams, Intent } from '@filler-sdk/sdk';
+
+export function createTreasuryStrategy(treasuryAddress: Address) {
+  const target = treasuryAddress.toLowerCase();
+  return {
+    filter(intent: Intent): boolean {
+      // Accept ONLY intents from the configured DAO treasury
+      return intent.swapper.toLowerCase() === target;
+    },
+    decide(_intent: Intent, _params: FillParams): boolean {
+      // Always submit — the DAO is paying itself
+      return true;
+    },
+  };
+}
+```
+
+## Why this is the hero
+
+A DAO with $50M+ in treasury rebalances quarterly. With aggregators it pays 10–30 bps in spread — for $50M of rebalance, that's **$50K–$150K quarterly**. With Filler SDK + this template, the DAO captures that spread in-house.
+
+Karpatkey-style DAO treasuries (Aave, Compound, Frax, ENS, Optimism Collective) are the natural customer.
+
+## Run it locally
+
+```bash
+cd examples/treasury-rebalance
+DEMO_MODE=true bun start
+# → dashboard at http://localhost:8080/events ticks $0 → $XX,XXX
+```
+
+Production mode (against a real fork or chain):
+
+```bash
+bun run e2e:fork  # spawn anvil + deploy + fund + stake + submit one intent
+```
+
+## Source
+
+[`examples/treasury-rebalance/`](https://github.com/filler-sdk/filler-sdk/tree/main/examples/treasury-rebalance)

@@ -1,0 +1,39 @@
+# KeeperHub Integration
+
+[KeeperHub](https://keeperhub.com) is the execution + reliability layer for on-chain agents. Filler SDK ships first-class integration for MEV-protected fill broadcasting.
+
+:::tip[Sprint 06 Plan 04]
+Full KeeperHub integration guide — Sprint 06 Plan 04. This page is the skeleton. See also [`KEEPERHUB_FEEDBACK.md`](https://github.com/filler-sdk/filler-sdk/blob/main/plans/KEEPERHUB_FEEDBACK.md) for honest feedback on the integration.
+:::
+
+## TL;DR
+
+```ts
+const filler = createFillerFromPrivateKey({
+  // ...
+  keeperHub: {
+    baseUrl: process.env.KEEPERHUB_BASE_URL,
+    apiKey: process.env.KEEPERHUB_API_KEY,
+  },
+});
+
+await filler.submitFill(intent, params, { useKeeperHub: true });
+```
+
+When `useKeeperHub: true`, the SDK routes the broadcast through KeeperHub — guaranteed inclusion, MEV-protected, with audit trail.
+
+## When to use
+
+- **Production fills** where MEV extraction is a real risk
+- **High-value verticals** (treasury rebalances $50K+)
+- **Compliance-sensitive flows** that need full audit trail
+
+## When not to
+
+- **Demo / test environments** — adds complexity without benefit
+- **Sub-$1K fills** — gas savings of plain RPC outweigh KeeperHub fee
+
+## Next
+
+- [KeeperHub MCP docs](https://docs.keeperhub.com/ai-tools)
+- [API Reference: KeeperHub Client](/api/sdk)

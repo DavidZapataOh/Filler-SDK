@@ -1,0 +1,32 @@
+# Hook-Specific
+
+A solver scoped to a specific v4 hook — bootstrapping liquidity for users of that hook before institutional desks pick it up.
+
+:::tip[Sprint 06 Plan 05]
+Full recipe — Sprint 06 Plan 05. This page is the skeleton.
+:::
+
+## The thesis
+
+Every new v4 hook is a 6–12 month window without solver coverage. Hook authors run their own Filler-based solver to ensure their hook has fillable liquidity from day 1.
+
+## Strategy
+
+```ts
+const TARGET_HOOK = '0x...';  // your hook contract
+
+export const strategy = {
+  filter(intent: Intent): boolean {
+    // Accept intents that route through pools using OUR hook
+    return intent.poolKey.hooks === TARGET_HOOK;
+  },
+  decide(intent: Intent, params: FillParams): boolean {
+    // Hook-specific decision logic — e.g., reject if hook's fee is exotic
+    return params.feesCaptured > minHookSpread(intent);
+  },
+};
+```
+
+## Source
+
+[`packages/cli/templates/custom`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/cli/templates/custom) — start here, then specialize for your hook

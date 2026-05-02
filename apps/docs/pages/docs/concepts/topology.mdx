@@ -1,0 +1,47 @@
+# Topology
+
+Self-hosted, no SaaS. Three layers, all MIT-licensed.
+
+:::tip[Sprint 06 Plan 03]
+Full architectural breakdown — Sprint 06 Plan 03. This page is the skeleton.
+:::
+
+## The shape
+
+```
+┌────────────────────────────────────────────────────────┐
+│  Frontend (static, optional)                           │
+│   • Demo dashboard with live SPREAD CAPTURED counter   │
+│   • Vocs documentation site (this site)               │
+└────────────────────┬───────────────────────────────────┘
+                     │ HTTP / SSE
+┌────────────────────▼───────────────────────────────────┐
+│  Off-chain services (self-hosted)                      │
+│   • @filler-sdk/jit-hints — Ponder-based v4 indexer    │
+│   • @filler-sdk/sdk — TypeScript solver SDK            │
+│   • Reference solver bots (3 verticals)                │
+└────────────────────┬───────────────────────────────────┘
+                     │ RPC / WS
+┌────────────────────▼───────────────────────────────────┐
+│  On-chain                                              │
+│   • Filler.sol  — IReactorCallback + IUnlockCallback   │
+│   • FillerBond.sol — stake / slash / withdraw          │
+│   • UniswapX Reactor + v4 PoolManager (Uniswap)        │
+└────────────────────────────────────────────────────────┘
+```
+
+## What we ship vs operate
+
+- **We ship**: npm packages, docker images, foundry artifacts
+- **We do NOT operate**: any service for customers
+- **Customer infra**: solver bot + indexer + dashboard run on customer's RPC + Postgres
+
+## Why self-hosted
+
+- **No central failure point** — the SDK works against any RPC
+- **No data leakage** — solvers don't reveal strategy to a third party
+- **Composable** — every primitive is replaceable
+
+## Next
+
+- [Production Checklist](/docs/guides/production) — operational guardrails

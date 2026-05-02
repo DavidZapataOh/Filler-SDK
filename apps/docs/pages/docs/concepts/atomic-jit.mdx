@@ -1,0 +1,38 @@
+# Atomic JIT Pattern
+
+The on-chain primitive that defines Filler SDK: `add → swap → remove → settle`, atomic in a single transaction via `PoolManager.unlock`.
+
+:::tip[Sprint 06 Plan 03]
+Full conceptual deep-dive — Sprint 06 Plan 03. This page is the skeleton.
+:::
+
+## The shape
+
+```solidity
+function unlockCallback(bytes calldata data) external onlyPoolManager returns (bytes memory) {
+    FillParams memory p = abi.decode(data, (FillParams));
+    _addJitLiquidity(p);
+    _swap(p);
+    _removeJitLiquidity(p);
+    DeltaSettler.settleAll(POOL_MANAGER, p.poolKey);
+    _assertDeltasZero(p);
+    return "";
+}
+```
+
+Source: [`contracts/src/Filler.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/Filler.sol).
+
+## Why atomic
+
+- **No inventory risk between steps** — the LP add and remove happen in the same atomic unit
+- **No price slippage between simulation and execution** — the swap consumes liquidity the Filler just provided
+- **`_assertDeltasZero`** — the contract enforces that no currency leaks; if any delta is non-zero, the whole tx reverts
+
+## Inventory requirement
+
+The in-range JIT pattern requires the Filler to hold inventory of the OUTPUT token. For the treasury-rebalance vertical this is fine — DAOs hold inventory by design. See [F-66 in FEEDBACK.md](/resources/feedback) for the full architectural finding.
+
+## Next
+
+- [JIT Inventory Hints](/docs/concepts/jit-hints) — how the indexer surfaces fillable depth
+- [Bond Mechanism](/docs/concepts/bond) — the slashable accountability primitive

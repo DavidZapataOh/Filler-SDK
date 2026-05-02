@@ -1,0 +1,41 @@
+# Contracts API Reference
+
+`Filler.sol` + `FillerBond.sol` — immutable, multisig-owned, MIT-licensed.
+
+:::tip[Sprint 06 Plan 04]
+Full forge-doc API reference — Sprint 06 Plan 04. This page is the skeleton.
+:::
+
+## Filler.sol
+
+### Solver entry points
+
+- `execute(SignedOrder calldata order, bytes calldata callbackData) external payable` — single-order fill
+- `executeBatch(SignedOrder[] calldata orders, bytes calldata callbackData) external payable` — batch fill
+
+### Reactor callback (called by UniswapX Reactor)
+
+- `reactorCallback(ResolvedOrder[] memory orders, bytes memory callbackData) external onlyReactor nonReentrant`
+
+### Unlock callback (called by v4 PoolManager)
+
+- `unlockCallback(bytes calldata data) external onlyPoolManager returns (bytes memory)`
+
+### Admin (operational only — fill logic immutable)
+
+- `configureApprovals(Currency[] calldata currencies) external onlyOwner` — one-time setup
+- `allowCurrency(Currency currency) external onlyOwner`
+- `disallowCurrency(Currency currency) external onlyOwner`
+
+## FillerBond.sol
+
+- `stake(address filler) external payable`
+- `requestUnstake(address filler, uint256 amount) external` — starts 7-day cooldown
+- `withdraw(address filler) external` — claim after cooldown
+- `slash(address filler, address staker, uint256 amount, bytes32 evidenceHash) external onlyOwner`
+- `stakeOf(address filler, address staker) external view returns (uint256)`
+
+## Source
+
+- [`contracts/src/Filler.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/Filler.sol)
+- [`contracts/src/FillerBond.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/FillerBond.sol)

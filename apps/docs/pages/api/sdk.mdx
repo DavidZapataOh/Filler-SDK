@@ -1,0 +1,48 @@
+# SDK API Reference
+
+`@filler-sdk/sdk` — TypeScript solver SDK.
+
+:::tip[Sprint 06 Plan 04]
+Full TypeDoc-generated API reference — Sprint 06 Plan 04. This page is the skeleton.
+:::
+
+## Top-level entry points
+
+### `createFiller(opts)` / `createFillerFromPrivateKey(opts)`
+
+Construct a `Filler` handle.
+
+```ts
+import { createFillerFromPrivateKey } from '@filler-sdk/sdk';
+
+const filler = createFillerFromPrivateKey({
+  chainId: 31337,
+  privateKey: '0x...',
+  rpcUrl: 'http://localhost:8545',
+  addresses: { filler, fillerBond, reactor, poolManager },
+  indexer: { baseUrl: 'http://localhost:42069' },
+});
+```
+
+### `filler.subscribeIntents(filter, handler)`
+
+Subscribe to intent events. Today's source is `chainFillIntentSource` (observational, post-settle); a `tradingApiIntentSource` is roadmap pending [F-64](/resources/feedback).
+
+### `filler.prepareFill(intent)` / `filler.submitFill(intent, params, opts)`
+
+Prepare + submit fills.
+
+### `filler.bond.stake(amount)` / `filler.bond.requestUnstake(amount)` / `filler.bond.withdraw()`
+
+Bond client.
+
+## Sub-paths
+
+- `@filler-sdk/sdk/testing` — `createMockFiller`, `mockFillResult`
+- `@filler-sdk/sdk/bond` — standalone `BondClient`
+- `@filler-sdk/sdk/keeperhub` — `KeeperHubClient`
+- `@filler-sdk/sdk/abis` — auto-generated ABIs
+
+## Source
+
+[`packages/sdk/src/index.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/index.ts) — every exported name is part of the stable API.

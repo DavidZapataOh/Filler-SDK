@@ -1,0 +1,47 @@
+# JIT Hints Indexer API Reference
+
+`@filler-sdk/jit-hints` — Ponder-based v4 indexer + JIT depth query API.
+
+:::tip[Sprint 06 Plan 04]
+Full endpoint + schema reference — Sprint 06 Plan 04. This page is the skeleton.
+:::
+
+## Endpoints
+
+### `GET /health`
+
+Indexer status.
+
+```json
+{ "status": "ok", "latestBlock": 25010080, "lag": 2 }
+```
+
+### `GET /pools`
+
+List indexed pools.
+
+```ts
+GET /pools?token=0xa0b8…eb48
+→ [
+  { id: "0xa7e8…755f1", currency0, currency1, fee, tickSpacing, hooks, sqrtPriceX96, tick }
+]
+```
+
+### `GET /depth/:poolId`
+
+Tick-level depth for the given pool.
+
+```ts
+GET /depth/0xa7e8…755f1?atSqrtPrice=...&direction=token0
+→ {
+  hint: { tickLower, tickUpper, liquidityDelta, expectedFee, sqrtPriceImpact }
+}
+```
+
+### SSE: `GET /depth/stream/:poolId`
+
+Real-time depth updates as new blocks arrive.
+
+## Source
+
+[`packages/jit-hints/src/api/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/jit-hints/src/api)

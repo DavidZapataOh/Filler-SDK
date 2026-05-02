@@ -1,0 +1,25 @@
+# Architecture Decision Records
+
+Decisions that shaped the SDK + contracts. Each ADR is a permanent record — superseded ADRs link to their replacements.
+
+:::tip[Sprint 06 Plan 06]
+Full ADR collection — Sprint 06 Plan 06. This page is the skeleton; live ADRs are in the repo.
+:::
+
+## ADRs in the repo
+
+- [**ADR 0000 — Template**](https://github.com/filler-sdk/filler-sdk/blob/main/docs/adr/0000-template.md)
+- [**ADR 0001 — Immutable contracts**](https://github.com/filler-sdk/filler-sdk/blob/main/docs/adr/0001-immutable-contracts.md) — why `Filler.sol` + `FillerBond.sol` ship without upgradeability
+- [**ADR 0002 — Bond v0 owner-slash**](https://github.com/filler-sdk/filler-sdk/blob/main/docs/adr/0002-bond-v0-owner-slash.md) — v0 trust model + v1 trustless-slash roadmap
+
+## What an ADR is
+
+A short markdown doc capturing a single non-obvious decision: **context** + **options considered** + **decision** + **consequences**. We write one whenever a future-team would ask "why does this work this way?" and the answer requires more than two sentences.
+
+## Pattern we follow
+
+- **Numbered**, append-only — `0003-...`, `0004-...`
+- **Status**: `Accepted` | `Superseded` | `Deprecated`
+- **Title**: imperative + noun (`Choose immutable contracts`, `Adopt JIT inventory hints`)
+
+[Read the template](https://github.com/filler-sdk/filler-sdk/blob/main/docs/adr/0000-template.md)

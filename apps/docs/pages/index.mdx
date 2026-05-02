@@ -1,0 +1,71 @@
+---
+layout: landing
+content:
+  width: 60rem
+---
+
+import { HomePage } from 'vocs/components';
+
+<HomePage.Root>
+  <HomePage.Logo />
+  <HomePage.Tagline>
+    Tres archivos y un bond. Deploy vertical UniswapX solvers in `npm install`.
+  </HomePage.Tagline>
+  <HomePage.InstallPackage name="create-filler" type="init" />
+  <HomePage.Description>
+    Today, running a UniswapX solver takes ~4 weeks of infrastructure before the first fill. Filler SDK collapses that to three files and a bond — and opens the long tail of vertical solvers institutional desks don't reach.
+  </HomePage.Description>
+  <HomePage.Buttons>
+    <HomePage.Button href="/docs/quickstart" variant="accent">Get started</HomePage.Button>
+    <HomePage.Button href="https://github.com/filler-sdk/filler-sdk">GitHub</HomePage.Button>
+  </HomePage.Buttons>
+</HomePage.Root>
+
+## Why Filler SDK?
+
+The UniswapX solver layer is monopolized by ~10 institutional desks (Wintermute, SCP, Propeller, Barter) optimized for majors. Why? Because day-1 of building a solver costs ~4 weeks of infra:
+
+- A custom v4 hook-event indexer
+- Inventory tracking + per-pool simulation
+- Atomic JIT add → swap → remove orchestration
+- MEV protection + retry logic + monitoring
+
+Filler SDK is the **infrastructure** for that day-1, packaged. We don't compete with Wintermute on majors. We enable the 50+ verticals where they don't reach:
+
+- **Hook-specific solvers** — every new v4 hook is a 6–12 month window without coverage
+- **Treasury internalization** — DAOs filling their own rebalances instead of paying spread to aggregators
+- **LVR-aware strategies** — redistributing LVR back to LPs as core mechanic
+- **Atomic compound fills** — yield deposits, hedge legs, governance actions in one tx
+
+[Learn more →](/docs/intro)
+
+## Three files and a bond
+
+Every solver shipped with Filler SDK looks the same:
+
+```
+my-solver/
+├── src/
+│   ├── filler.ts      # subscribes to intents, calls the SDK
+│   ├── strategy.ts    # filter + decide(intent) → bool
+│   └── config.ts      # env-validated config
+└── package.json
+```
+
+Plus one on-chain bond — `FillerBond.stake(0.1 ETH)` — and the solver is operational. [See the quickstart →](/docs/quickstart)
+
+## Built on what UF funds
+
+- **[Foundry](https://book.getfoundry.sh)** for contracts (Solidity 0.8.30, EVM Prague, optimizer 1M runs)
+- **[Tycho-shape architecture](https://tycho.docs.propellerheads.xyz/)** — local indexer + composable primitives
+- **[Ponder](https://ponder.sh)** for v4 hook event indexing
+- **[viem](https://viem.sh)** for type-safe RPC
+- **[Solady](https://github.com/Vectorized/solady)** for gas-critical primitives
+
+[Read about the architecture →](/docs/concepts/topology)
+
+## Hackathon submission
+
+This SDK was built during ETHGlobal OpenAgents (April–May 2026) for the **Uniswap Foundation track**. The 60+ developer-friction items we hit are documented in [`FEEDBACK.md`](/resources/feedback) — actionable input for the Foundation's developer platform.
+
+[Read the FEEDBACK.md →](/resources/feedback)

@@ -1,0 +1,27 @@
+{
+  "name": "@filler-sdk/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Filler SDK — public documentation site (Vocs)",
+  "scripts": {
+    "dev": "vocs dev",
+    "build": "vocs build",
+    "preview": "vocs preview",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .vocs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vocs": "^1.4.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,36 @@
+# CLI API Reference
+
+`create-filler` — Project scaffolding CLI.
+
+:::tip[Sprint 06 Plan 04]
+Full CLI reference — Sprint 06 Plan 04. This page is the skeleton.
+:::
+
+## Usage
+
+```bash
+npx create-filler my-solver
+# Interactive prompts: vertical (simple-jit | lvr-aware | treasury-rebalance | custom)
+#                     chain (mainnet | unichain | base | arbitrum | optimism | sepolia)
+#                     useKeeperHub (yes | no)
+```
+
+## Non-interactive
+
+```bash
+npx create-filler my-solver \
+  --template treasury-rebalance \
+  --chain unichain \
+  --keeperhub
+```
+
+## Templates
+
+- `simple-jit` — single-pool baseline
+- `lvr-aware` — redistributes LVR to LPs
+- `treasury-rebalance` — DAO internalisation (**hero example**)
+- `custom` — minimal scaffold for hook-specific or novel verticals
+
+## Source
+
+[`packages/cli/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/cli)

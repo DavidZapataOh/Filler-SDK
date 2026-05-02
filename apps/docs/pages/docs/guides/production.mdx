@@ -1,0 +1,51 @@
+# Production Checklist
+
+Before going live with a Filler-based solver, verify:
+
+:::tip[Sprint 06 Plan 04]
+Full production runbook — Sprint 06 Plan 04. This page is the skeleton.
+:::
+
+## Smart contracts
+
+- [ ] `Filler.sol` + `FillerBond.sol` deployed at known addresses
+- [ ] Ownership transferred to a multisig (Safe with 2/3 threshold minimum) — never EOA
+- [ ] `configureApprovals(currencies)` called by multisig for each whitelisted token
+- [ ] Slither + Mythril clean (no medium+ findings)
+- [ ] 90%+ Foundry test coverage (line + branch)
+
+## Solver wallet
+
+- [ ] Solver private key in a hardware wallet or KMS — never plaintext
+- [ ] Solver wallet ≠ swapper wallet (Permit2 nonce isolation)
+- [ ] Solver wallet pre-funded with gas budget (~0.1–1 ETH depending on chain)
+
+## Bond
+
+- [ ] At least the chain's documented `minStake` deposited via `bond.stake(filler)`
+- [ ] Stake event verified on chain
+- [ ] Slashing playbook documented (who slashes, what evidence, what threshold)
+
+## Indexer
+
+- [ ] `@filler-sdk/jit-hints` deployed with reorg handling enabled
+- [ ] `/health` endpoint returning 200 with `latestBlock` lag < 60 seconds
+- [ ] Backfill complete from Filler deploy block
+
+## Operational
+
+- [ ] Pino structured logs piped to Loki/Grafana
+- [ ] Prometheus metrics scraped on `/metrics`
+- [ ] Sentry connected for error tracking
+- [ ] Dashboard SSE endpoint reachable from monitoring
+
+## Pre-launch
+
+- [ ] At least 3 successful end-to-end fills against a fork (`bun run e2e:fork`)
+- [ ] Pre-mortem reviewed (what can break? who fixes? how?)
+- [ ] On-call rotation defined
+
+## Next
+
+- [KeeperHub Integration](/docs/guides/keeperhub) — for MEV-protected production
+- [Topology Concept](/docs/concepts/topology) — full architectural overview

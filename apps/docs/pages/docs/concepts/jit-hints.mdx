@@ -1,0 +1,28 @@
+# JIT Inventory Hints
+
+The genuinely-novel primitive. The Trading API exposes quotes + routes; it does NOT expose *liquidity unfilled accessible for JIT*. `@filler-sdk/jit-hints` does.
+
+:::tip[Sprint 06 Plan 03]
+Full conceptual deep-dive — Sprint 06 Plan 03. This page is the skeleton.
+:::
+
+## The question
+
+Given an intent in the Reactor, which v4 LPs can contribute capital just-in-time, at what marginal price, with what impact on existing positions?
+
+## How
+
+`@filler-sdk/jit-hints` is a [Ponder-based](https://ponder.sh) indexer that:
+
+1. Tails the v4 PoolManager's `Initialize` + `ModifyLiquidity` + `Swap` events
+2. Maintains tick-level liquidity state per pool
+3. Exposes `/depth/<poolId>?atSqrtPrice=<x>&direction=<token0>` — sub-second answer to "how much depth is available at a price"
+
+## Why this matters
+
+Without this primitive, the SDK is a wrapper. With it, it's Tycho-shaped infrastructure: composable, self-hostable, indexes once + serves every solver in the operator's environment.
+
+## Next
+
+- [API Reference](/api/jit-hints) — endpoints + schemas
+- [Tycho's architecture](https://tycho.docs.propellerheads.xyz/) — the prior art we calque

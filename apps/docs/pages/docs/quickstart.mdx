@@ -1,0 +1,49 @@
+# Quickstart
+
+Get a UniswapX solver running on a mainnet fork in under 5 minutes.
+
+## Prerequisites
+
+- [Bun](https://bun.sh) ≥ 1.1.30
+- [Foundry](https://book.getfoundry.sh) (`anvil` + `cast` + `forge`)
+- ~5 minutes
+
+## Install
+
+```bash
+git clone https://github.com/filler-sdk/filler-sdk
+cd filler-sdk
+bun install
+```
+
+## Run the end-to-end smoke test
+
+```bash
+bun run e2e:fork
+```
+
+This brings up an anvil mainnet fork, deploys Filler/FillerBond at deterministic addresses, initializes a USDC/WETH 0.05% v4 pool, seeds it with $10K of liquidity, stakes a bond, and submits an intent — all in ~25 seconds.
+
+Expected output:
+
+```
+✓ E2E PASS in 25.5s. Filler.execute success: 0x161127…ae5300d
+```
+
+## What just happened
+
+1. **Anvil mainnet fork** at the latest block — real Uniswap contracts inherited from mainnet state
+2. **Filler + FillerBond** deployed at deterministic CREATE addresses
+3. **v4 USDC/WETH pool** initialized at the current mainnet v3 reference price
+4. **Liquidity seeded** via the `PoolSeeder` helper (10K USDC + 5 WETH)
+5. **Intent signed off-chain** (Permit2 EIP-712 + raw ECDSA cosigner) and submitted on-chain
+6. **Real swap** — 100 USDC → 0.0430 WETH, JIT spread captured by the Filler
+
+## Next steps
+
+- [First Fill in 5 Minutes](/docs/first-fill) — narrated walkthrough of the same flow
+- [Deploying a Solver](/docs/guides/deploy) — your own solver project (`npx create-filler`)
+
+:::tip[Sprint 06 Plan 02]
+Full quickstart walkthrough — Sprint 06 Plan 02. This page is the skeleton.
+:::

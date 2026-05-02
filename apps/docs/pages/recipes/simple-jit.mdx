@@ -1,0 +1,32 @@
+# Simple JIT
+
+The minimum viable Filler solver — one pool, one currency pair, accept any intent that matches.
+
+:::tip[Sprint 06 Plan 05]
+Full recipe — Sprint 06 Plan 05. This page is the skeleton.
+:::
+
+## Strategy
+
+```ts
+import type { Intent, FillParams } from '@filler-sdk/sdk';
+
+export const strategy = {
+  filter(intent: Intent): boolean {
+    // Accept any intent for our configured pool
+    return intent.input.token === USDC && intent.outputs[0]?.token === WETH;
+  },
+  decide(_intent: Intent, params: FillParams): boolean {
+    // Always submit if we got fillable params from the indexer
+    return true;
+  },
+};
+```
+
+## Use case
+
+Single-pool arbitrageurs who want to collect JIT spread without complex inventory management. Filler holds output-token inventory; SDK does the rest.
+
+## Source
+
+[`packages/cli/templates/simple-jit`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/cli/templates/simple-jit)

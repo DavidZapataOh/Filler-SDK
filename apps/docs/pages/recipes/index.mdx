@@ -1,0 +1,24 @@
+# Recipes
+
+Copy-pasteable solver templates for each canonical vertical.
+
+:::tip[Sprint 06 Plan 05]
+Full recipes coverage — Sprint 06 Plan 05. This page is the skeleton.
+:::
+
+| Vertical | Customer | Status |
+|---|---|---|
+| [Simple JIT](/recipes/simple-jit) | Single-pool arbitrageurs | Skeleton |
+| [LVR-Aware](/recipes/lvr-aware) | LP-redistribution strategies | Skeleton |
+| [Treasury Rebalance](/recipes/treasury-rebalance) | DAOs internalising rebalances | Skeleton (hero example exists) |
+| [Hook-Specific](/recipes/hooks) | v4 hook authors bootstrapping liquidity | Skeleton |
+
+Each recipe ships as:
+
+- A scaffolded project (`npx create-filler --template <vertical>`)
+- A walkthrough page (linked above)
+- A checklist of vertical-specific config
+
+## Pattern
+
+Every recipe boils down to one delta: the `strategy.ts` `filter` + `decide` functions. The SDK + contract logic stay identical. That's by design — the SDK is "any vertical, same primitives."

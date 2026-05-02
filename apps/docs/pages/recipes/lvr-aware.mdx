@@ -1,0 +1,30 @@
+# LVR-Aware
+
+A solver that redistributes LVR (loss-versus-rebalancing) back to passive LPs as a core mechanic.
+
+:::tip[Sprint 06 Plan 05]
+Full recipe — Sprint 06 Plan 05. This page is the skeleton.
+:::
+
+## The thesis
+
+LVR is the cost passive LPs pay to arbitrageurs. Conventional solvers extract it; LVR-aware solvers explicitly redistribute a fraction back to LPs in the consumed range.
+
+## Strategy
+
+```ts
+export const strategy = {
+  filter(intent: Intent): boolean {
+    // Accept intents for pools where LVR redistribution makes sense
+    return ourTrackedPools.has(intent.poolId);
+  },
+  decide(intent: Intent, params: FillParams): boolean {
+    // Reject if redistribution would make the fill unprofitable
+    return params.feesCaptured > redistributionAmount(intent);
+  },
+};
+```
+
+## Source
+
+[`packages/cli/templates/lvr-aware`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/cli/templates/lvr-aware)

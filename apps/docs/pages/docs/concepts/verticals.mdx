@@ -1,0 +1,33 @@
+# Verticals
+
+Filler SDK enables vertical solvers institutional desks don't reach.
+
+:::tip[Sprint 06 Plan 03]
+Full conceptual coverage — Sprint 06 Plan 03. This page is the skeleton.
+:::
+
+## The four canonical verticals
+
+### 1. Treasury Rebalance
+
+A DAO with $10M+ in treasury rebalances quarterly. With aggregators it pays 10–30 bps in spread; with Filler SDK, the DAO's solver fills the DAO's intents — spread stays internal. **Hero example**, ships in [`examples/treasury-rebalance`](https://github.com/filler-sdk/filler-sdk/tree/main/examples/treasury-rebalance).
+
+### 2. Hook-Specific
+
+Every new v4 hook is a 6–12 month window without institutional solver coverage. Hook authors run their own Filler-based solver to bootstrap liquidity for users of their hook.
+
+### 3. LVR-Aware
+
+Solvers that redistribute LVR (loss-versus-rebalancing) back to LPs as a core mechanic. Distinct from arbitrage — the strategy explicitly compensates passive LPs.
+
+### 4. Atomic Compound
+
+Fills composed with other on-chain actions in one tx — yield deposits, hedge legs, governance actions. Removes inter-step inventory risk.
+
+## What we DON'T enable
+
+- Competing with Wintermute / SCP / Propeller on majors. They have CEX-grade pricing pipelines we don't.
+
+## Next
+
+- [Recipes](/recipes) — copy-pasteable starter for each vertical

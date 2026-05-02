@@ -1,0 +1,35 @@
+# FEEDBACK.md
+
+Live developer feedback document, written during ETHGlobal OpenAgents (April–May 2026), targeted at the **Uniswap Foundation track**.
+
+:::info
+The full document — every reproducer, every suggested change — lives at [`plans/FEEDBACK.md`](https://github.com/filler-sdk/filler-sdk/blob/main/plans/FEEDBACK.md). This page is a navigable summary.
+:::
+
+## What's in there
+
+66+ items, each with:
+
+1. **Friction observed** — what was hard
+2. **Reproducer** — how to verify
+3. **Suggested change** — diff or new endpoint spec
+4. **Criticality** — High / Medium / Low for solver builders
+
+## Sprint 5.5 highlights — Testnet E2E
+
+- **F-57**: UniswapX has ZERO testnet deployments → mainnet fork promoted to PRIMARY E2E path
+- **F-61**: V2DutchOrderReactor's mandatory cosigner trap — `_validateOrder` always calls `abi.decode` on cosignature; empty `0x` panics with empty data BEFORE the typed error fires. Workaround: self-cosign
+- **F-62**: anvil's well-known accounts ALL have EIP-7702 SetCode delegation on mainnet → Permit2 takes ERC-1271 path → revert. Workaround: fresh keys
+- **F-64**: SDK's `subscribeIntents` only has observational (post-settle) source — no Trading API client until Uniswap publishes the wire format
+- **F-65**: v4 mainnet ETH essentially empty (0 swaps in 7 days). Liquidity migrated to Unichain (363 swaps in 1.5h). Public docs imply parity that doesn't exist
+- **F-66**: Filler's in-range JIT requires output-token inventory; SDK doesn't pre-flight check it — opaque revert at safeTransfer
+
+## Submission status
+
+- **Track**: Uniswap Foundation — Best Uniswap API integration ($5,000)
+- **Repository**: https://github.com/filler-sdk/filler-sdk
+- **Live demo**: documented in [`plans/sprint-05.5-testnet-e2e/demo-narrative.md`](https://github.com/filler-sdk/filler-sdk/blob/main/plans/sprint-05.5-testnet-e2e/demo-narrative.md)
+
+## Read the full document
+
+→ [`plans/FEEDBACK.md`](https://github.com/filler-sdk/filler-sdk/blob/main/plans/FEEDBACK.md)

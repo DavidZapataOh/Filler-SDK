@@ -1,0 +1,36 @@
+# Bond Lifecycle
+
+Stake → operate → unstake. The bond is the slashable accountability primitive.
+
+:::tip[Sprint 06 Plan 04]
+Full lifecycle guide — Sprint 06 Plan 04. This page is the skeleton.
+:::
+
+## Stake
+
+```bash
+bun stake 100000000000000000  # 0.1 ETH in wei
+```
+
+Calls `FillerBond.stake(filler) payable`. The `Staked(filler, staker, amount)` event fires.
+
+## Operate
+
+The Filler can now execute fills. Each successful `Filler.execute` call emits a `Filled(orderHash, swapper, ...)` event — these are the audit trail.
+
+## Slashing
+
+A slashable violation (per [ADR 0002](/resources/adrs)) is observable on chain. The bond's owner submits evidence; slashed funds go to the configured treasury.
+
+## Unstake (cooldown)
+
+```solidity
+bond.requestUnstake(filler, amount);  // starts 7-day cooldown
+// ... wait 7 days ...
+bond.withdraw(filler);  // funds back to staker
+```
+
+## Next
+
+- [Bond Mechanism Concept](/docs/concepts/bond) — trust model + invariants
+- [API Reference: Contracts](/api/contracts) — function signatures
