@@ -1,40 +1,64 @@
 /**
- * Dashboard root. Plan 02 ships the Hero (before/after split-screen) above
- * the live capture section. Plans 03/04/05/06/07 attach to the placeholder
- * grid + the LiveCaptured section.
+ * Dashboard root. Plan 06 wires SSE hooks to drive the live counter, the
+ * JIT depth chart, and the header LiveBadge.
  *
- *   - Plan 02 — Hero before/after (THIS plan, lands at top)
- *   - Plan 03 — LiveCaptured wired to SSE (replaces static placeholder)
- *   - Plan 04 — JIT depth chart (placeholder grid)
- *   - Plan 05 — Three Files Reveal (placeholder grid)
- *   - Plan 06 — SSE hooks (drives Plan 03 / 04 state)
- *   - Plan 07 — Replay mode (deterministic offline demo)
+ *   - Plan 02 — Hero before/after (top)
+ *   - Plan 03 — SpreadCounter (consumes useSpreadStream)
+ *   - Plan 04 — JITDepthChart (consumes useDepthStream)
+ *   - Plan 05 — ThreeFilesReveal (auto-play)
+ *   - Plan 06 — useSSE hooks (THIS plan: wires sources)
+ *   - Plan 07 — Replay mode (will swap sources for fixtures)
  *
- * Layout decisions (60-30-10 reminder):
- *   - 60% canvas: zinc-950 page bg + zinc-900-ish surface for cards.
- *   - 30% text: zinc-200/400 — readable without screaming.
- *   - 10% money: emerald reserved for the money counters.
+ * Env-var driven sources:
+ *   - `VITE_SPREAD_EMITTER_URL` → treasury-rebalance dashboard emitter
+ *     (default: unset → empty state).
+ *   - `VITE_DEPTH_INDEXER_URL` → jit-hints indexer (default: unset).
+ *   - `VITE_DEPTH_POOL` → pool address for the depth chart.
  *
- * Borders > extra background layers — design.txt: "sometimes a simple
- * border is the best solution."
+ * Without env vars the dashboard renders fully (skeletons + empty-state
+ * copy) so judges browsing the deployed page see the intended visuals
+ * without needing a local solver running.
  */
 
 import { ArrowUpRight, Github } from 'lucide-react';
+import { useMemo } from 'react';
 
 import { Hero } from './components/Hero/Hero';
 import { JITDepthChart } from './components/JITDepthChart';
 import { LiveBadge } from './components/LiveBadge';
 import { SpreadCounter } from './components/SpreadCounter';
 import { ThreeFilesReveal } from './components/ThreeFilesReveal';
+import { type DepthStreamParams, useDepthStream } from './hooks/useDepthStream';
+import { useSpreadStream } from './hooks/useSpreadStream';
+
+/** Default pool when VITE_DEPTH_POOL is unset — Unichain USDC/ETH 0.05%. */
+const DEFAULT_POOL = '0x0000000000000000000000000000000000000000';
+const DEFAULT_TRADE_SIZE = 1_000_000n; // 1 USDC at 6 decimals
 
 export function App(): JSX.Element {
+  const spreadEmitter = import.meta.env.VITE_SPREAD_EMITTER_URL;
+  const depthIndexer = import.meta.env.VITE_DEPTH_INDEXER_URL;
+  const depthPool = import.meta.env.VITE_DEPTH_POOL ?? DEFAULT_POOL;
+
+  const spread = useSpreadStream(spreadEmitter);
+
+  // Memoise the params object identity — the hook already memoises the
+  // URL on shallow params, but a new object literal each render would
+  // also be fine (the URL is the actual cache key). Keeping it stable
+  // documents the pattern for callers.
+  const depthParams = useMemo<DepthStreamParams>(
+    () => ({ pool: depthPool, size: DEFAULT_TRADE_SIZE, zeroForOne: true }),
+    [depthPool],
+  );
+  const depth = useDepthStream(depthIndexer, depthParams);
+
   return (
     <div className="min-h-screen bg-[--color-canvas]">
-      <Header />
+      <Header badgeStatus={spread.badgeStatus} />
       <Hero />
       <main className="mx-auto flex max-w-5xl flex-col gap-12 px-6 pt-16 pb-24 sm:px-8">
-        <LiveCapturedSection />
-        <PlaceholderGrid />
+        <LiveCapturedSection source={spread.events} />
+        <VisualisationGrid depthSource={depth.events} />
       </main>
       <Footer />
     </div>
@@ -43,7 +67,11 @@ export function App(): JSX.Element {
 
 // === Header ==============================================================
 
-function Header(): JSX.Element {
+function Header({
+  badgeStatus,
+}: {
+  badgeStatus: 'live' | 'degraded' | 'disconnected';
+}): JSX.Element {
   return (
     <header className="border-b border-[--color-border-subtle]">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 sm:px-8">
@@ -56,8 +84,9 @@ function Header(): JSX.Element {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Plan 01 placeholder — Plan 06 wires the real SSE state in. */}
-          <LiveBadge status="live" />
+          {/* Plan 06: badge status reflects the spread-stream connection.
+              When VITE_SPREAD_EMITTER_URL is unset, status=disconnected. */}
+          <LiveBadge status={badgeStatus} />
           <a
             href="https://github.com/filler-sdk/filler-sdk"
             target="_blank"
@@ -90,9 +119,16 @@ function BrandMark(): JSX.Element {
   );
 }
 
-// === Live capture (Plan 03 wires SSE) ====================================
+// === Live capture (Plan 03 + Plan 06 wiring) =============================
 
-function LiveCapturedSection(): JSX.Element {
+import type { DepthSnapshot } from './components/JITDepthChart';
+import type { SpreadEvent } from './components/SpreadCounter';
+
+function LiveCapturedSection({
+  source,
+}: {
+  source: AsyncIterable<SpreadEvent>;
+}): JSX.Element {
   return (
     <section
       aria-labelledby="live-capture-title"
@@ -109,26 +145,26 @@ function LiveCapturedSection(): JSX.Element {
         Every intent submitted by a self-filling DAO keeps the spread that would otherwise leave to
         an external aggregator. Watch the cumulative capture in real time.
       </p>
-
-      {/* Plan 03 ships the live counter visual. Plan 06 will pass `source`
-          via `useSSE(...)` once the SSE hook lands; until then the counter
-          renders the empty state ("Waiting for the first fill…"). */}
-      <SpreadCounter className="mt-4 w-full max-w-2xl" />
+      <SpreadCounter source={source} className="mt-4 w-full max-w-2xl" />
     </section>
   );
 }
 
-// === Visualisation grid (Plans 03 / 04 / 05 / 07 land here) ==============
+// === Visualisation grid (Plans 04 / 05 / 07 land here) ===================
 
-function PlaceholderGrid(): JSX.Element {
+function VisualisationGrid({
+  depthSource,
+}: {
+  depthSource: AsyncIterable<DepthSnapshot>;
+}): JSX.Element {
   return (
     <section aria-label="Visualisation slots" className="grid gap-6 lg:grid-cols-2">
-      {/* Plan 04: live JIT depth chart. Empty state until Plan 06 wires SSE. */}
-      <JITDepthChart pool="USDC/ETH 0.05%" className="lg:col-span-2" />
-      {/* Plan 05: the memetic-handle reveal. Auto-plays on mount; Plan 07
-          will switch to manual + drive `step` from the replay timeline. */}
+      <JITDepthChart pool="USDC/ETH 0.05%" source={depthSource} className="lg:col-span-2" />
       <ThreeFilesReveal className="lg:col-span-2" />
-      <Card title="Recent fills" body="Plan 03 streams every spread-captured event as it lands." />
+      <Card
+        title="Recent fills"
+        body="The last 10 spread-captured events scroll here once SSE is wired."
+      />
       <Card
         title="Replay mode"
         body="Plan 07 ships deterministic offline fixtures for demo recording."
@@ -144,12 +180,7 @@ interface CardProps {
 
 /**
  * Card — uses borders, NOT a heavier background layer. design.txt:
- * "sometimes a simple border is the best solution. A common challenge
- * designers face is working with the brand colors that are provided."
- *
- * The card is a placeholder until Plans 02-05 fill in real content; the
- * shape it offers (title + body, hover affordance) is what those plans
- * will inherit.
+ * "sometimes a simple border is the best solution."
  */
 function Card({ title, body }: CardProps): JSX.Element {
   return (

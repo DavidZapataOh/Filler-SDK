@@ -57,14 +57,15 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  test('Plan 01 — live badge in the header (Plan 06 wires real SSE state)', () => {
+  test('Plan 06 — live badge in header reflects spread-stream status', () => {
     render(<App />);
     const statuses = screen.getAllByRole('status');
-    // Hero's counter ships <output>s with role=status (timer + amount); the
-    // header LiveBadge is also <output>. We only assert the LiveBadge
-    // remains on the page by selecting on its data-status attribute.
-    const liveBadge = statuses.find((el) => el.getAttribute('data-status') === 'live');
+    // Header LiveBadge has data-status; Hero's <output>s do not. With no
+    // VITE_SPREAD_EMITTER_URL set in tests, the spread stream is `idle`
+    // → maps to `disconnected` per useSpreadStream's badge mapping.
+    const liveBadge = statuses.find((el) => el.hasAttribute('data-status'));
     expect(liveBadge).toBeDefined();
+    expect(liveBadge?.getAttribute('data-status')).toBe('disconnected');
   });
 
   test('Plans 03/04/05/07 — four placeholder slots present', () => {
