@@ -24,6 +24,7 @@
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   cancel as clackCancel,
@@ -438,8 +439,12 @@ const invokedDirectly = (() => {
   try {
     const argv1 = process.argv[1];
     if (typeof argv1 !== 'string') return false;
-    const url = import.meta.url;
-    return url.endsWith(argv1) || url === `file://${argv1}`;
+    // On Windows, `import.meta.url` is `file:///C:/path/to/cli.js` (forward
+    // slashes, file:// prefix) while `process.argv[1]` is `C:\path\to\cli.js`
+    // (backslashes, no prefix). A naive `url.endsWith(argv1)` fails. Convert
+    // both to canonical absolute paths and compare.
+    const fromUrl = fileURLToPath(import.meta.url);
+    return resolve(fromUrl) === resolve(argv1);
   } catch {
     return false;
   }

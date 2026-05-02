@@ -12,6 +12,7 @@
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "vitest run --mode e2e",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },

@@ -1,0 +1,51 @@
+# Enforce LF for all text files. Without this, a Windows clone of the repo
+# would convert `*.tpl` template bytes to CRLF on checkout — and our
+# render() preserves the input bytes, so the rendered project's source files
+# would also become CRLF. That breaks shebang detection (`#!/usr/bin/env bun\r`),
+# `bun install` lockfile diffs, and any byte-comparison test (e.g. our
+# render snapshot tests).
+#
+# Catches the same class of bug F-31 surfaces: scaffolding tools that don't
+# explicitly pin line endings inherit the OS's default, which is the wrong
+# default on Windows for any shell-script-shaped artifact.
+
+*           text=auto eol=lf
+
+# Source — never auto-detect; always LF.
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.json      text eol=lf
+*.jsonc     text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.sh        text eol=lf
+*.tpl       text eol=lf
+*.sol       text eol=lf
+
+# Lockfiles + manifests — LF always.
+package.json     text eol=lf
+bun.lock         text eol=lf
+bun.lockb        binary
+foundry.lock     text eol=lf
+pnpm-lock.yaml   text eol=lf
+
+# Binary artifacts — never touch.
+*.png        binary
+*.jpg        binary
+*.gif        binary
+*.ico        binary
+*.pdf        binary
+*.zip        binary
+*.gz         binary
+*.tar        binary
+*.wasm       binary
+
+# Foundry artifacts — Solidity ABI/bytecode JSON should be LF (text).
+contracts/out/**          text eol=lf
+contracts/cache/**        text eol=lf
+contracts/broadcast/**    text eol=lf

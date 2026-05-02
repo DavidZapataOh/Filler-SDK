@@ -1,0 +1,108 @@
+name: CLI E2E
+
+# Cross-platform smoke tests for `create-filler`. Spawns the built CLI as a
+# real subprocess on each runner OS + verifies scaffolding works for every
+# vertical. Plan 06 (Sprint 04) wires this matrix to catch path-separator,
+# line-ending, and `spawn` bugs that the in-process unit tests can't see.
+#
+# Trigger policy:
+#   - PR + push to main when CLI / template files change.
+#   - Manual workflow_dispatch (always available).
+# Skipped intentionally: docs-only PRs, contract-only PRs, infrastructure
+# tweaks. The CLI's main `ci.yml` already runs the in-process suite; this
+# workflow only adds the cross-platform spawn coverage.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/cli/**'
+      - '.github/workflows/cli-e2e.yml'
+      - '.gitattributes'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/cli/**'
+      - '.github/workflows/cli-e2e.yml'
+      - '.gitattributes'
+  workflow_dispatch: {}
+
+concurrency:
+  group: cli-e2e-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: '1'
+
+jobs:
+  e2e:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # We need a fresh checkout that respects .gitattributes (not a
+          # cached LFS-pointer or partial clone) so eol=lf is honored.
+          fetch-depth: 1
+
+      # Belt-and-suspenders: even with .gitattributes pinning *.tpl to LF,
+      # a Windows runner with global core.autocrlf=true would still convert
+      # on checkout. setting these BEFORE actions/checkout has no effect
+      # (the checkout already happened). The `git config` here ensures any
+      # subsequent git operations our tests run respect LF. Plus, we verify
+      # the bytes-on-disk in the scaffold output via test/e2e.test.ts'
+      # CRLF detector — that's the actual safety net.
+      - name: Configure git for LF on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.1.30
+
+      # Bun's setup-bun action installs `bun.exe` on Windows runners; the
+      # PATH wiring is already done. No `cross-env` shim needed because
+      # our test:e2e script uses `vitest run --mode e2e` (no env-var prefix
+      # syntax — that's the F-39 fix from this plan's FEEDBACK item).
+
+      - name: Install monorepo deps
+        run: bun install --frozen-lockfile
+
+      - name: Build CLI
+        run: bun run --filter create-filler build
+
+      - name: Sanity — dist/cli.js exists
+        shell: bash
+        run: test -f packages/cli/dist/cli.js
+
+      # On Windows the inline env-var prefix `FOO=1 cmd` doesn't work in
+      # cmd.exe, but `bun run` parses scripts via bun's POSIX-compat shell,
+      # so `bun run --filter create-filler test:e2e` works on every runner.
+      - name: Run E2E
+        run: bun run --filter create-filler test:e2e
+        env:
+          NODE_ENV: test
+
+      # When E2E fails, capture the temp scaffold dirs so a maintainer can
+      # debug without re-running. The tests use `os.tmpdir()`; we glob it
+      # post-failure so we capture only the failed run's artifacts.
+      - name: Upload scaffold artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-e2e-scaffolds-${{ matrix.os }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/create-filler-e2e-*
+            ${{ runner.temp }}/create filler spaced-*
+          retention-days: 3
+          if-no-files-found: ignore
