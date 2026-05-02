@@ -69,8 +69,8 @@ export const VERTICALS: readonly VerticalSpec[] = [
   {
     value: 'treasury-rebalance',
     label: 'Treasury Rebalance Filler',
-    hint: 'DAO internalization — coming in Plan 02',
-    available: false,
+    hint: 'HERO — DAO internalization, synthetic intents + SSE dashboard',
+    available: true,
   },
   {
     value: 'custom',

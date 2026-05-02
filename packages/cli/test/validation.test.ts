@@ -68,11 +68,16 @@ describe('VERTICALS table', () => {
     ]);
   });
 
-  test('available verticals (Plan 04 added lvr-aware)', () => {
+  test('available verticals (Plan 05 added treasury-rebalance HERO)', () => {
     const available = VERTICALS.filter((v) => v.available).map((v) => v.value);
-    // Sprint 04 cumulative: simple-jit (P03), lvr-aware (P04), custom (P01).
-    // treasury-rebalance lands in P05.
-    expect(available).toEqual(['simple-jit', 'lvr-aware', 'custom']);
+    // Sprint 04 cumulative: simple-jit (P03), lvr-aware (P04),
+    // treasury-rebalance (P05), custom (P01).
+    expect(available).toEqual([
+      'simple-jit',
+      'lvr-aware',
+      'treasury-rebalance',
+      'custom',
+    ]);
   });
 
   test('isVerticalKey type guard', () => {
