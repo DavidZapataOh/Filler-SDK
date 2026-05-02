@@ -1,32 +1,97 @@
-# Simple JIT
+---
+description: The minimum viable Filler — single pool, single pair, accept any matching intent.
+---
 
-The minimum viable Filler solver — one pool, one currency pair, accept any intent that matches.
+# Simple JIT — Baseline Recipe
 
-:::tip[Sprint 06 Plan 05]
-Full recipe — Sprint 06 Plan 05. This page is the skeleton.
-:::
+The minimum viable solver. Single pool, single pair, fills any intent that matches your config + meets a minimum profit threshold.
 
-## Strategy
+## Use case
+
+You want to **earn JIT spread by filling random intents**. No specific vertical, no donations to LPs, no hook-specific integration. Just a focused arbitrageur on one pool.
+
+This is the right recipe when:
+
+- You're learning the SDK and want to understand the core flow
+- You've identified one specific pool with consistent flow
+- You don't represent an institutional flow or DAO (otherwise [Treasury](/recipes/treasury-rebalance))
+- You don't have an LP-protective mandate (otherwise [LVR-Aware](/recipes/lvr-aware))
+
+## What ships
+
+`packages/cli/templates/simple-jit/` — same shape as the other 3 templates, with the `strategy.ts` simplified:
+
+```
+my-solver/
+├── src/
+│   ├── filler.ts      # main entry — subscribes to Reactor
+│   ├── strategy.ts    # filter by pool + decide by min profit
+│   └── config.ts      # env-validated config
+├── package.json       # workspace dep on @filler-sdk/sdk
+└── .env.example
+```
+
+## Setup
+
+```bash
+npx create-filler my-solver --template simple-jit --chain unichain
+cd my-solver
+bun install
+
+# Or scaffold manually based on examples/treasury-rebalance — same workspace shape:
+git clone https://github.com/filler-sdk/filler-sdk
+cd filler-sdk
+bun install
+# Then copy examples/treasury-rebalance + adapt strategy.ts (below)
+```
+
+## Strategy — the customisation surface
 
 ```ts
-import type { Intent, FillParams } from '@filler-sdk/sdk';
+import type { Address } from 'viem';
+import type { FillParams, Intent } from '@filler-sdk/sdk';
+
+const POOL_USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' as Address;
+const POOL_WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' as Address;
+const MIN_PROFIT_WEI = 1_000_000_000_000_000n; // 0.001 WETH
 
 export const strategy = {
   filter(intent: Intent): boolean {
-    // Accept any intent for our configured pool
-    return intent.input.token === USDC && intent.outputs[0]?.token === WETH;
+    // Only fill intents on our target pool
+    const pair = [intent.input.token, intent.outputs[0]?.token].sort();
+    return pair[0]?.toLowerCase() === POOL_USDC && pair[1]?.toLowerCase() === POOL_WETH;
   },
+
   decide(_intent: Intent, params: FillParams): boolean {
-    // Always submit if we got fillable params from the indexer
-    return true;
+    // Capture spread only if it exceeds gas cost + a margin
+    return params.feesCaptured >= MIN_PROFIT_WEI;
   },
 };
 ```
 
-## Use case
+That's the whole strategy. Two functions, ~10 lines. The SDK does the heavy lifting (intent decoding, signature validation, FillParams calibration, broadcast).
 
-Single-pool arbitrageurs who want to collect JIT spread without complex inventory management. Filler holds output-token inventory; SDK does the rest.
+## When NOT to use this recipe
 
-## Source
+| If you... | Use instead |
+|---|---|
+| Represent a DAO treasury or institutional flow | [Treasury Rebalance](/recipes/treasury-rebalance) |
+| Want to redistribute fees to LPs (LVR-aware) | [LVR-Aware](/recipes/lvr-aware) |
+| Are a v4 hook author bootstrapping coverage | [Hook-Specific](/recipes/hooks) |
 
-[`packages/cli/templates/simple-jit`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/cli/templates/simple-jit)
+The Simple JIT recipe is a **baseline**, not the destination for most teams. If you're building production infrastructure, picking one of the verticals usually has better unit economics + alignment.
+
+## Production checklist
+
+The simpler recipe still has the same on-chain accountability primitive:
+
+- [ ] Bond stake `>= chain.minStake` from a multisig
+- [ ] Filler whitelisted for currencies you trade (`configureApprovals`)
+- [ ] Output-token inventory ([F-66](/resources/feedback)) sufficient for in-range JIT
+- [ ] Monitoring + alerting + backup solver (same as [Production Checklist](/docs/guides/production))
+
+## Related
+
+- [Quickstart](/docs/quickstart) — `bun run e2e:fork` first
+- [Atomic JIT Pattern](/docs/concepts/atomic-jit) — what's happening on-chain
+- [Treasury Rebalance](/recipes/treasury-rebalance) — the more compelling vertical for most teams

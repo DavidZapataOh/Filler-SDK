@@ -1,30 +1,111 @@
-# LVR-Aware
+---
+description: LP-protective vertical — solver donates a fraction of captured fees back to in-range LPs to reduce LVR.
+---
 
-A solver that redistributes LVR (loss-versus-rebalancing) back to passive LPs as a core mechanic.
+# LVR-Aware — LP-Protective Recipe
 
-:::tip[Sprint 06 Plan 05]
-Full recipe — Sprint 06 Plan 05. This page is the skeleton.
-:::
+A solver that **redistributes a fraction of the JIT spread back to in-range LPs** as a core mechanic. Trades smaller per-fill margin for ecosystem alignment.
 
-## The thesis
+## What's LVR
 
-LVR is the cost passive LPs pay to arbitrageurs. Conventional solvers extract it; LVR-aware solvers explicitly redistribute a fraction back to LPs in the consumed range.
+Loss-Versus-Rebalancing — the cost passive LPs pay to arbitrageurs because LP positions are always re-priced AFTER swaps. Conventional solvers extract this. LVR-aware solvers explicitly redistribute a fraction (typically 25%) back to LPs.
 
-## Strategy
+The trade is **smaller solver margin (~75% of fees) in exchange for ecosystem alignment**. Suitable for:
+
+- Operating in pools where you also LP (you'd be donating to yourself partially)
+- Building reputation in DAO ecosystems that fund LP-friendly infra (Uniswap Foundation, Arrakis treasury)
+- Aligning incentives with v4 hook ecosystems that mandate LP-favourable solvers (gated pools, KYA pools)
+
+## How it works
+
+```mermaid
+flowchart LR
+    Intent[Incoming intent] --> Calc[Compute LVR delta]
+    Calc -->|reduces LVR| Fill[Fill + donate 25%]
+    Calc -->|increases LVR| Skip[Skip — don't extract]
+    Fill --> Pool[v4 pool]
+    Pool --> LPs[in-range LPs<br/>via PoolManager.donate]
+    Fill --> Solver[Solver keeps 75%]
+```
+
+1. Intent arrives via the SDK's `subscribeIntents`
+2. Solver computes expected LVR delta if the fill happens (using a vol oracle of choice)
+3. If LVR is REDUCED → fill executes + `PoolManager.donate(...)` returns 25% of the swap fees to in-range LPs
+4. If LVR is unchanged or INCREASED → skip the fill (don't extract from LPs in adversarial scenarios)
+
+## Setup
+
+```bash
+npx create-filler lvr-bot --template lvr-aware --chain unichain
+cd lvr-bot
+```
+
+The template adds an `src/lvr.ts` module with the LVR delta calculation:
 
 ```ts
+// src/lvr.ts (skeleton — plug in your vol oracle)
+export async function calculateLVRDelta(
+  intent: Intent,
+  params: FillParams,
+  ctx: { volOracle: VolOracle },
+): Promise<{ delta: bigint; reduces: boolean }> {
+  const vol = await ctx.volOracle.getVol(intent.input.token, intent.outputs[0].token);
+  // Compute pre/post LVR based on swap size + price impact + volatility
+  // Real implementation: use a model from a published LVR paper (e.g., Milionis et al.)
+  // ...
+  return { delta, reduces };
+}
+```
+
+The `volOracle` is left as a swappable dependency — for production, integrate with [Pyth](https://pyth.network), [Chainlink](https://chain.link), or a custom indexer-derived feed.
+
+## Strategy — donate fraction is the customisation knob
+
+```ts
+import type { Address } from 'viem';
+import type { FillParams, Intent } from '@filler-sdk/sdk';
+import { calculateLVRDelta } from './lvr';
+
+const DONATE_BPS = 2500; // 25% — change to taste
+
 export const strategy = {
-  filter(intent: Intent): boolean {
-    // Accept intents for pools where LVR redistribution makes sense
-    return ourTrackedPools.has(intent.poolId);
+  filter(_intent: Intent): boolean {
+    // Accept anything; LVR check happens in decide
+    return true;
   },
-  decide(intent: Intent, params: FillParams): boolean {
-    // Reject if redistribution would make the fill unprofitable
-    return params.feesCaptured > redistributionAmount(intent);
+
+  async decide(intent: Intent, params: FillParams): Promise<boolean> {
+    const { reduces } = await calculateLVRDelta(intent, params, ctx);
+    return reduces;
   },
+
+  // Hook for the SDK to inject donate logic
+  postFillDonate: { enabled: true, bps: DONATE_BPS },
 };
 ```
 
-## Source
+## On-chain donation primitive
 
-[`packages/cli/templates/lvr-aware`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/cli/templates/lvr-aware)
+The v4 PoolManager exposes [`donate(PoolKey, amount0, amount1)`](https://github.com/Uniswap/v4-core/blob/main/src/interfaces/IPoolManager.sol) which credits the donated amount pro-rata to in-range LPs. The Filler can call this from `unlockCallback` after the swap + before remove. The SDK wraps this as `params.donate0` / `params.donate1` fields when `postFillDonate.enabled = true`.
+
+This is the same pattern the SDK already supports — see [`Filler.unlockCallback`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/Filler.sol).
+
+## Why this might NOT work for you
+
+- **Smaller margin** — 75% of typical Simple JIT
+- **Vol oracle dependency** — needs reliable + low-latency price feed
+- **Complex backtest** — LVR-aware fills are harder to reason about than pure profit-driven; needs dedicated simulation harness
+
+If your unit economics don't tolerate 25% margin compression, this isn't the recipe.
+
+## When this DOES work
+
+- DAO-funded vault that holds passive LP positions + wants to reduce LVR exposure on its OWN positions
+- v4 hook authors mandating LP-protective solvers as gating criterion (KYA hooks, governance-gated pools)
+- Researchers experimenting with redistributive market microstructure
+
+## Related
+
+- [Concepts → JIT Inventory Hints](/docs/concepts/jit-hints) — fee capture + donate math
+- [Atomic JIT Pattern](/docs/concepts/atomic-jit) — the on-chain primitive donate plugs into
+- [Verticals](/docs/concepts/verticals) — when LVR-aware is the right fit
