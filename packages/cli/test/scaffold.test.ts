@@ -36,7 +36,11 @@ describe('scaffoldProject (Plan 01 stub)', () => {
     expect(existsSync(join(targetDir, 'README.md'))).toBe(true);
     expect(existsSync(join(targetDir, '.gitignore'))).toBe(true);
     expect(existsSync(join(targetDir, '.env.example'))).toBe(true);
-    expect(existsSync(join(targetDir, 'src/index.ts'))).toBe(true);
+    // simple-jit overlay ships 4 src files: config / strategy / filler / stake.
+    expect(existsSync(join(targetDir, 'src/filler.ts'))).toBe(true);
+    expect(existsSync(join(targetDir, 'src/config.ts'))).toBe(true);
+    expect(existsSync(join(targetDir, 'src/strategy.ts'))).toBe(true);
+    expect(existsSync(join(targetDir, 'src/stake.ts'))).toBe(true);
   });
 
   test('package.json has the right name + dependencies', async () => {
@@ -131,7 +135,7 @@ describe('scaffoldProject (Plan 01 stub)', () => {
     ).rejects.toThrow();
   });
 
-  test('simple-jit src/index.ts renders with chosen chain + KeeperHub block', async () => {
+  test('simple-jit src/filler.ts renders with KeeperHub block when useKeeperHub=true', async () => {
     await scaffoldProject({
       targetDir,
       projectName: 'my-test-solver',
@@ -141,14 +145,13 @@ describe('scaffoldProject (Plan 01 stub)', () => {
       useKeeperHub: true,
       initGit: false,
     });
-    const idx = readFileSync(join(targetDir, 'src/index.ts'), 'utf-8');
-    expect(idx).toContain('optimism');
-    expect(idx).toContain('keeperHub:');
-    expect(idx).toContain('apiKey: env.KEEPERHUB_API_KEY');
-    expect(idx).toContain('my-test-solver');
+    const filler = readFileSync(join(targetDir, 'src/filler.ts'), 'utf-8');
+    expect(filler).toContain('keeperHub:');
+    expect(filler).toContain('useKeeperHub: true');
+    expect(filler).toContain('my-test-solver');
   });
 
-  test('simple-jit src/index.ts WITHOUT KeeperHub omits the block', async () => {
+  test('simple-jit src/filler.ts WITHOUT KeeperHub omits the block', async () => {
     await scaffoldProject({
       targetDir,
       projectName: 'my-test-solver',
@@ -158,8 +161,8 @@ describe('scaffoldProject (Plan 01 stub)', () => {
       useKeeperHub: false,
       initGit: false,
     });
-    const idx = readFileSync(join(targetDir, 'src/index.ts'), 'utf-8');
-    expect(idx).not.toContain('keeperHub:');
-    expect(idx).not.toContain('KEEPERHUB_API_KEY');
+    const filler = readFileSync(join(targetDir, 'src/filler.ts'), 'utf-8');
+    expect(filler).not.toContain('keeperHub:');
+    expect(filler).not.toContain('useKeeperHub: true');
   });
 });
