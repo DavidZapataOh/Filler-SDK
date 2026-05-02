@@ -321,16 +321,34 @@ export interface SubmitFillOptions {
  * `src/bond/client.ts` and is exported from `@filler-sdk/sdk/bond`. We
  * reference its handle from the top-level `Filler` so users can write
  * `filler.bond.totalStake()` without a second import.
+ *
+ * Each `BondClient` is scoped to a single `(fillerContract, account)` pair —
+ * the `account` is the staker, the `fillerContract` is the `Filler.sol`
+ * deployment whose bond pool the staker is contributing to.
  */
 export interface BondClientHandle {
   readonly chainId: ChainId;
   readonly bondContract: Address;
+  /** The `Filler.sol` deployment this bond is backing. */
+  readonly fillerContract: Address;
   readonly account: Address;
+  /** Stake total for `(fillerContract, account)` (active + pending unstake). */
   totalStake(): Promise<bigint>;
+  /** Stake currently usable as collateral (`stakeOf(filler, account)`). */
   activeStake(): Promise<bigint>;
+  /** Stake currently in the unstake-cooldown window. */
   pendingUnstake(): Promise<bigint>;
+  /**
+   * Global slashed amount across ALL fillers on this bond contract — useful
+   * for monitoring + UI badges. Per-filler / per-staker slashing isn't
+   * tracked at the contract level (v0 design).
+   */
   slashedTotal(): Promise<bigint>;
+  /** Stake ETH to back `fillerContract`. Returns the tx hash. */
+  stake(amount: bigint): Promise<Hash>;
+  /** Begin the unstake cooldown for `amount`. Returns the tx hash. */
   requestUnstake(amount: bigint): Promise<Hash>;
+  /** After cooldown, withdraw the unstaked amount. Returns the tx hash. */
   withdraw(): Promise<Hash>;
 }
 

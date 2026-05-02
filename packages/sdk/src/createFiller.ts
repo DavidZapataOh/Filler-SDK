@@ -389,6 +389,7 @@ function assembleFiller(config: ResolvedFillerConfig): Filler {
   const bond = new BondClient({
     chainId: config.chainId,
     bondContract: config.addresses.fillerBond,
+    fillerContract: config.addresses.filler,
     account: config.account,
     publicClient: config.transport.publicClient,
     walletClient: config.transport.walletClient,
