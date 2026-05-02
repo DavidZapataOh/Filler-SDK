@@ -46,6 +46,7 @@ export type {
   IntentSurface,
   KeeperHubConfig,
   PoolId,
+  PoolInfo,
   PoolKey,
   ResolvedFillerConfig,
   ResolvedOutput,

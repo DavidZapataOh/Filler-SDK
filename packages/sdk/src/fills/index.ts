@@ -13,4 +13,11 @@ export type {
   SimulationResult,
 } from '../types';
 
-export { FillEngine, type FillEngineConfig } from './engine';
+export { applyGasMultiplier, FillEngine, type FillEngineConfig } from './engine';
+export {
+  FILL_PARAMS_ARRAY_ABI,
+  decodeCallbackData,
+  encodeCallbackData,
+} from './encoding';
+export { calibrateTickRange, type CalibratedRange, type CalibrateInput } from './tickCalibration';
+export { extractRevertReason, simulateFill } from './simulation';

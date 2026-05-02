@@ -491,8 +491,40 @@ export interface SimulationResult {
 export interface IndexerSurface {
   /** GET /depth — fetch a JIT depth hint for a pool + size + direction. */
   depth(query: DepthQuery): Promise<DepthHint>;
+  /**
+   * Resolve a pool for a token pair. Returns the pool best suited to fill
+   * an intent for `(input, output)` on `chainId`, or `null` if no indexed
+   * pool matches. The selection heuristic (highest liquidity / lowest fee /
+   * preferred hook) is implementation-defined and lands in Plan 06.
+   */
+  findPool(input: Address, output: Address, chainId: ChainId): Promise<PoolInfo | null>;
   /** GET /health — used by readiness probes. */
   health(): Promise<{ status: 'ok' | 'degraded'; chains: readonly ChainStatus[] }>;
+}
+
+/**
+ * Resolved pool metadata returned by `IndexerSurface.findPool`. Carries the
+ * full PoolKey + identity fields the FillEngine needs to build `FillParams`.
+ */
+export interface PoolInfo {
+  /** keccak256(PoolKey) — the indexer's primary key. */
+  id: PoolId;
+  /** Lower-address token. */
+  currency0: Address;
+  /** Higher-address token. */
+  currency1: Address;
+  /** Static fee in pips. */
+  fee: number;
+  /** Tick spacing — both fill ticks must be divisible by this. */
+  tickSpacing: number;
+  /** Hook contract; `0x000…000` for hookless pools. */
+  hooks: Address;
+  /** Current sqrt(price) × 2^96. Useful for the FillEngine's calibration. */
+  sqrtPriceX96: bigint;
+  /** Current liquidity across the pool. */
+  liquidity: bigint;
+  /** Current tick. */
+  tick: number;
 }
 
 /**

@@ -13,6 +13,9 @@
  * `01-package-architecture-progress.md` §5.3.
  */
 
+import type { Address } from 'viem';
+
+import type { ChainId } from '../chains';
 import { FillerError } from '../errors';
 import type {
   ChainStatus,
@@ -20,6 +23,7 @@ import type {
   DepthQuery,
   FillerLogger,
   IndexerSurface,
+  PoolInfo,
 } from '../types';
 
 export interface IndexerClientConfig {
@@ -73,6 +77,19 @@ export class IndexerClient implements IndexerSurface {
       new FillerError(
         'UNKNOWN',
         'IndexerClient.depth is implemented in Plan 06 (HTTP client with retries + lru cache)',
+      ),
+    );
+  }
+
+  findPool(
+    _input: Address,
+    _output: Address,
+    _chainId: ChainId,
+  ): Promise<PoolInfo | null> {
+    return Promise.reject(
+      new FillerError(
+        'UNKNOWN',
+        'IndexerClient.findPool is implemented in Plan 06 (queries the indexer pool registry)',
       ),
     );
   }

@@ -90,35 +90,36 @@ describe('createFiller', () => {
     expect(filler.config.indexer.baseUrl).toBe('https://hints.filler.xyz');
   });
 
-  test('subscribe is real (Plan 02); other surfaces throw until Plans 03-08', async () => {
+  test('Plan-by-plan surface state — what is wired vs. what still throws', async () => {
     const filler = createFiller(validConfig);
 
-    // Plan 02 wires subscribe — does NOT throw, returns an unsubscribe fn.
+    // Plan 02: createFiller + intents.subscribe wired; intents.list() returns []
+    // when no source is configured (Plan 03 added the engine; sourced behavior
+    // is covered by `intents/stream.test.ts`).
     const unsubscribe = filler.intents.subscribe({}, () => {
       // no-op handler
     });
     expect(typeof unsubscribe).toBe('function');
     unsubscribe();
-
-    // Plan 03 ships the engine + sources; with no source wired, `list()`
-    // resolves to an empty array (a valid "no feed" state). Sourced behavior
-    // is covered by `intents/stream.test.ts`.
     await expect(filler.intents.list()).resolves.toEqual([]);
 
-    // Plan 04 wires execute / simulate.
-    const stubIntent = { orderHash: '0x', deadline: 0n } as never;
-    const stubParams = {} as never;
-    await expect(filler.fills.execute(stubIntent, stubParams)).rejects.toBeInstanceOf(
-      FillerError,
-    );
-    await expect(filler.fills.simulate(stubIntent, stubParams)).rejects.toBeInstanceOf(
-      FillerError,
-    );
+    // Plan 04: fills.execute rejects observational intents (sentinel rawOrder)
+    // with a FillerError subclass — sourced behavior covered in
+    // `fills/engine.test.ts`. Expired-intent rejection is also Plan 04.
+    const observational = {
+      orderHash: '0xff' as `0x${string}`,
+      rawOrder: '0x' as `0x${string}`,
+      signature: '0x' as `0x${string}`,
+      deadline: 9_999_999_999n,
+    } as never;
+    await expect(
+      filler.fills.execute(observational, {} as never),
+    ).rejects.toBeInstanceOf(FillerError);
 
-    // Plan 06 wires depth + health.
+    // Plan 06: depth + health still pending.
     await expect(filler.indexer.health()).rejects.toBeInstanceOf(FillerError);
 
-    // Plan 07 wires bond reads + writes.
+    // Plan 07: bond reads + writes still pending.
     await expect(filler.bond.totalStake()).rejects.toBeInstanceOf(FillerError);
   });
 
