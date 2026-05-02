@@ -25,6 +25,7 @@ import { Hero } from './components/Hero/Hero';
 import { JITDepthChart } from './components/JITDepthChart';
 import { LiveBadge } from './components/LiveBadge';
 import { SpreadCounter } from './components/SpreadCounter';
+import { ThreeFilesReveal } from './components/ThreeFilesReveal';
 
 export function App(): JSX.Element {
   return (
@@ -124,10 +125,9 @@ function PlaceholderGrid(): JSX.Element {
     <section aria-label="Visualisation slots" className="grid gap-6 lg:grid-cols-2">
       {/* Plan 04: live JIT depth chart. Empty state until Plan 06 wires SSE. */}
       <JITDepthChart pool="USDC/ETH 0.05%" className="lg:col-span-2" />
-      <Card
-        title="Three files"
-        body="Plan 05 reveals strategy.ts + filler.ts + stake.ts side-by-side."
-      />
+      {/* Plan 05: the memetic-handle reveal. Auto-plays on mount; Plan 07
+          will switch to manual + drive `step` from the replay timeline. */}
+      <ThreeFilesReveal className="lg:col-span-2" />
       <Card title="Recent fills" body="Plan 03 streams every spread-captured event as it lands." />
       <Card
         title="Replay mode"
