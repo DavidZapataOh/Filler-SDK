@@ -22,6 +22,7 @@
 import { ArrowUpRight, Github } from 'lucide-react';
 
 import { Hero } from './components/Hero/Hero';
+import { JITDepthChart } from './components/JITDepthChart';
 import { LiveBadge } from './components/LiveBadge';
 import { SpreadCounter } from './components/SpreadCounter';
 
@@ -116,15 +117,13 @@ function LiveCapturedSection(): JSX.Element {
   );
 }
 
-// === Placeholder grid (Plans 03 / 04 / 05 land here) =====================
+// === Visualisation grid (Plans 03 / 04 / 05 / 07 land here) ==============
 
 function PlaceholderGrid(): JSX.Element {
   return (
-    <section aria-label="Visualisation slots" className="grid gap-6 sm:grid-cols-2">
-      <Card
-        title="JIT depth"
-        body="Plan 04 binds the live area chart from the indexer's depth feed."
-      />
+    <section aria-label="Visualisation slots" className="grid gap-6 lg:grid-cols-2">
+      {/* Plan 04: live JIT depth chart. Empty state until Plan 06 wires SSE. */}
+      <JITDepthChart pool="USDC/ETH 0.05%" className="lg:col-span-2" />
       <Card
         title="Three files"
         body="Plan 05 reveals strategy.ts + filler.ts + stake.ts side-by-side."
