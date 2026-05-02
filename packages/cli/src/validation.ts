@@ -63,8 +63,8 @@ export const VERTICALS: readonly VerticalSpec[] = [
   {
     value: 'lvr-aware',
     label: 'LVR-Aware Filler',
-    hint: 'Advanced strategy — coming in Plan 02',
-    available: false,
+    hint: 'Advanced — only fills LP-favourable swaps, prom-client metrics',
+    available: true,
   },
   {
     value: 'treasury-rebalance',

@@ -47,10 +47,13 @@ describe('scaffold integration — every vertical scaffolds a coherent project',
       expect(existsSync(join(targetDir, '.gitignore'))).toBe(true);
       expect(existsSync(join(targetDir, '.env.example'))).toBe(true);
 
-      // Vertical overlay provides its own src/ files. simple-jit ships 4
-      // files (config / strategy / filler / stake); other verticals ship 1.
+      // Vertical overlay provides its own src/ entrypoint:
+      //   - simple-jit + lvr-aware ship a 4-file split (filler.ts is the entry)
+      //   - treasury-rebalance + custom ship a single src/index.ts (P05 / P01)
       const expectedSrcFile =
-        vertical === 'simple-jit' ? 'src/filler.ts' : 'src/index.ts';
+        vertical === 'simple-jit' || vertical === 'lvr-aware'
+          ? 'src/filler.ts'
+          : 'src/index.ts';
       expect(existsSync(join(targetDir, expectedSrcFile))).toBe(true);
 
       // package.json is valid JSON + has the expected name.
