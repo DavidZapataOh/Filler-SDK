@@ -49,13 +49,17 @@ export function createDashboardEmitter(port: number): DashboardEmitter {
   let totalUSD = 0;
   let server: Server | undefined;
 
+  // CORS — defaults to '*' for local dev, narrow via DASHBOARD_ORIGIN in prod.
+  // Plan 07 §3.5: production deploys MUST set the explicit origin.
+  const corsOrigin = process.env['DASHBOARD_ORIGIN'] ?? '*';
+
   function handle(req: IncomingMessage, res: ServerResponse): void {
     if (req.url === '/events') {
       res.writeHead(200, {
         'content-type': 'text/event-stream',
         'cache-control': 'no-cache',
         connection: 'keep-alive',
-        'access-control-allow-origin': '*',
+        'access-control-allow-origin': corsOrigin,
         'x-accel-buffering': 'no',
       });
       res.write(`event: connected\ndata: ${JSON.stringify({ totalUSD, clientCount: clients.size + 1 })}\n\n`);
@@ -66,7 +70,10 @@ export function createDashboardEmitter(port: number): DashboardEmitter {
       return;
     }
     if (req.url === '/health') {
-      res.writeHead(200, { 'content-type': 'application/json' });
+      res.writeHead(200, {
+        'content-type': 'application/json',
+        'access-control-allow-origin': corsOrigin,
+      });
       res.end(
         JSON.stringify({
           status: 'ok',
