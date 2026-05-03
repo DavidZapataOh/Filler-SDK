@@ -21,7 +21,7 @@
  * source.
  */
 
-import { Github } from 'lucide-react';
+import { BookOpen, Github } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { Hero } from './components/Hero/Hero';
@@ -82,6 +82,7 @@ export function App(): JSX.Element {
           replayMode={replay.enabled}
           replayThreeFilesStep={replay.threeFilesStep}
         />
+        <NextStepsCTA />
       </main>
       <Footer />
     </div>
@@ -111,6 +112,16 @@ function Header({
         <div className="flex items-center gap-3">
           {replayName !== null && <ReplayBadge name={replayName} />}
           <LiveBadge status={badgeStatus} />
+          <a
+            href="https://filler-sdk-docs.vercel.app/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-[--color-border-subtle] px-2.5 py-1 text-xs text-[--color-text-muted] transition hover:bg-[--color-surface-2] hover:text-[--color-text-default]"
+            aria-label="Filler SDK documentation"
+          >
+            <BookOpen aria-hidden="true" className="size-3.5" />
+            <span className="hidden sm:inline">Docs</span>
+          </a>
           <a
             href="https://github.com/DavidZapataOh/filler-sdk"
             target="_blank"
@@ -215,14 +226,79 @@ function VisualisationGrid({
   );
 }
 
+// === Next steps CTA ======================================================
+
+function NextStepsCTA(): JSX.Element {
+  return (
+    <section
+      aria-labelledby="next-steps-title"
+      className="flex flex-col items-center gap-6 rounded-2xl border border-[--color-border-subtle] bg-[--color-surface-1] px-6 py-12 text-center sm:px-10"
+    >
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-[--color-text-subtle]">
+          Next steps
+        </p>
+        <h2
+          id="next-steps-title"
+          className="text-balance text-2xl font-semibold tracking-tight text-[--color-text-default] sm:text-3xl"
+        >
+          Ready to ship your solver?
+        </h2>
+        <p className="max-w-xl text-sm text-[--color-text-muted] sm:text-base">
+          Quickstart, API reference, and recipes — everything to go from{' '}
+          <span className="font-mono">npm install</span> to a verified on-chain fill in 25 seconds.
+        </p>
+      </div>
+      <div className="flex flex-col items-center gap-3 sm:flex-row">
+        <a
+          href="https://filler-sdk-docs.vercel.app/"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-md border border-[--color-money]/40 bg-[--color-money]/10 px-4 py-2 text-sm font-medium text-[--color-money] transition hover:bg-[--color-money]/20"
+        >
+          <BookOpen aria-hidden="true" className="size-4" />
+          <span>Read the docs</span>
+        </a>
+        <a
+          href="https://github.com/DavidZapataOh/filler-sdk"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-md border border-[--color-border-default] bg-[--color-surface-2] px-4 py-2 text-sm text-[--color-text-default] transition hover:border-[--color-border-strong]"
+        >
+          <Github aria-hidden="true" className="size-4" />
+          <span>View on GitHub</span>
+        </a>
+      </div>
+    </section>
+  );
+}
+
 // === Footer ==============================================================
 
 function Footer(): JSX.Element {
   return (
     <footer className="border-t border-[--color-border-subtle]">
-      <div className="mx-auto flex max-w-5xl flex-col gap-2 px-6 py-6 text-xs text-[--color-text-subtle] sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-6 text-xs text-[--color-text-subtle] sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <span>Filler SDK is MIT-licensed. Self-host the indexer, the SDK, and the contracts.</span>
-        <span className="font-mono text-[--color-text-faint]">three files and a bond</span>
+        <div className="flex items-center gap-4">
+          <a
+            href="https://filler-sdk-docs.vercel.app/"
+            target="_blank"
+            rel="noreferrer"
+            className="transition hover:text-[--color-text-default]"
+          >
+            Docs
+          </a>
+          <a
+            href="https://github.com/DavidZapataOh/filler-sdk"
+            target="_blank"
+            rel="noreferrer"
+            className="transition hover:text-[--color-text-default]"
+          >
+            GitHub
+          </a>
+          <span className="font-mono text-[--color-text-faint]">three files and a bond</span>
+        </div>
       </div>
     </footer>
   );
