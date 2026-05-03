@@ -10,7 +10,7 @@
 
 The SDK to deploy vertical UniswapX solvers in `npm install`.
 
-[**Documentation**](https://docs.filler-sdk.xyz) · [**FEEDBACK.md →**](./plans/FEEDBACK.md) (66 items for Uniswap Foundation) · [**Demo narrative →**](./plans/sprint-05.5-testnet-e2e/demo-narrative.md)
+[**Documentation**](https://docs.filler-sdk.xyz) · [**FEEDBACK.md →**](./FEEDBACK.md) (developer feedback for the Uniswap Foundation track)
 
 ---
 
@@ -78,7 +78,7 @@ Three layers — all self-hosted, MIT-licensed, ecosystem-aligned with [Foundry]
 | [`create-filler`](./packages/cli) | Project scaffolding CLI | Pre-1.0, working |
 | [`contracts/`](./contracts) | `Filler.sol` + `FillerBond.sol` + libraries (Solidity 0.8.30) | Pre-1.0, immutable, multisig-owned |
 | [`apps/dashboard`](./apps/dashboard) | React 18 + Vite live-counter dashboard with replay mode | Pre-1.0, deploy-ready |
-| [`apps/docs`](./apps/docs) | Vocs documentation site (this README's links) | Pre-1.0, 145 prerendered pages |
+| [`apps/docs`](./apps/docs) | Vocs documentation site (this README's links) | Pre-1.0, full content site |
 | [`examples/treasury-rebalance`](./examples/treasury-rebalance) | **Hero example** — DAO solver, workspace-linked | Working against `bun run e2e:fork` |
 
 ---
@@ -93,24 +93,24 @@ KEEP_ALIVE=1 bun run e2e:fork &           # leaves anvil running for the recordi
 cd apps/dashboard && bun run preview      # localhost:4173, replay mode safety net
 ```
 
-[Full demo narrative (90s voiceover) →](./plans/sprint-05.5-testnet-e2e/demo-narrative.md)
+The pre-record smoke test ships ready-to-run; the 90-second voiceover script is part of the demo deliverable.
 
 ---
 
 ## FEEDBACK.md — required for Uniswap Foundation track
 
-Per the [hackathon spec](https://ethglobal.com/events/openagents/prizes#uniswap), the Uniswap Foundation track requires honest, actionable developer feedback. Our [`plans/FEEDBACK.md`](./plans/FEEDBACK.md) ships **66 items**, each with: friction observed, reproducer, suggested change, criticality.
+Per the [hackathon spec](https://ethglobal.com/events/openagents/prizes#uniswap), the Uniswap Foundation track requires honest, actionable developer feedback. Our [`FEEDBACK.md`](./FEEDBACK.md) ships 10 highest-impact items, each with: friction observed, reproducer, suggested change, criticality.
 
-Highlights from Sprint 5.5 (testnet E2E):
+Highlights:
 
-- **F-57** — UniswapX has zero testnet deployments (verified across 4 candidate testnets); we pivoted to mainnet fork as PRIMARY E2E path
-- **F-61** — V2DutchOrderReactor's mandatory cosigner trap (`cosigner=0x0` reverts with empty data); workaround documented
-- **F-62** — anvil's well-known accounts ALL have EIP-7702 SetCode delegation on mainnet post-Pectra → Permit2 takes ERC-1271 path → revert
-- **F-64** — SDK has only `chainFillIntentSource` (observational); no Trading API client until Uniswap publishes wire format (F-15)
-- **F-65** — v4 mainnet ETH essentially empty (0 swaps in 7 days); liquidity migrated to Unichain
-- **F-66** — `Filler.sol`'s in-range JIT requires output-token inventory; SDK doesn't pre-flight check it
+- UniswapX has zero testnet deployments (verified across 4 candidate testnets); pivoting to mainnet fork is the only path to a real demo
+- V2DutchOrderReactor's mandatory-cosigner trap — `cosigner=0x0` reverts with empty data, the SDK builder accepts the broken shape silently; workaround + suggested fix documented
+- Trading API has no documented Intent JSON wire format → blocks autonomous-solver SDK adapters; we'd ship the adapter once the schema is published
+- v4 mainnet ETH adoption gap — most-liquid PoolManager is Unichain (363 swaps / 1.5h vs 0 swaps / 7d on mainnet ETH); docs imply parity that doesn't exist
+- `Filler.sol`'s in-range JIT requires output-token inventory — hidden constraint; we'd ship a pre-flight check
+- Treasury internalisation is undocumented as a UniswapX pattern despite being the highest-leverage DAO use case — we contribute the recipe
 
-[Read the full FEEDBACK →](./plans/FEEDBACK.md)
+[Read the full FEEDBACK →](./FEEDBACK.md)
 
 ---
 

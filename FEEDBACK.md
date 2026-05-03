@@ -1,10 +1,8 @@
 # FEEDBACK.md — Uniswap Foundation
 
-> Developer feedback report from building **Filler SDK** during ETHGlobal OpenAgents (April–May 2026).
+> Developer feedback report from building **Filler SDK** during ETHGlobal OpenAgents.
 >
 > Prize-eligibility document for the [Uniswap Foundation track](https://ethglobal.com/events/openagents/prizes#uniswap). Per the track's qualification requirement: *"Tell us everything about your builder experience with the Uniswap API and Developer Platform."*
->
-> This is the **submission-grade document**, hand-curated to 10 highest-impact items. The exhaustive 66-item archive lives at [`plans/FEEDBACK.md`](./plans/FEEDBACK.md), accumulated incrementally across 8 sprints — every item with reproducer, suggested change, and criticality.
 
 ---
 
@@ -12,7 +10,7 @@
 
 We built **Filler SDK** — open-source MIT, three TypeScript packages + two Solidity contracts, deploys vertical UniswapX solvers in `npm install`. The pitch: lower the 4-week barrier-to-first-fill for the long-tail of solver verticals (treasury rebalances, hook-specific solvers, LVR-aware strategies) that institutional desks (Wintermute, SCP, Propeller) don't economically reach.
 
-While building, we hit **66 distinct frictions** across the Uniswap developer surface. The 10 most impactful — the ones that would shape the next 6 months of the developer platform if any one were addressed — are detailed below. Each one passes our quality bar:
+The 10 items below are the highest-leverage frictions we encountered — the ones that, if any one were addressed, would materially improve the next builder's experience. Each passes our quality bar:
 
 - **Specific** — names the exact endpoint, file, contract, or commit
 - **Reproducible** — copy-paste reproducer included; a maintainer can verify in 5 minutes
@@ -33,20 +31,15 @@ Each of the 10 items below has 4 sections:
 3. **Suggested change** — concrete diff or new endpoint
 4. **Criticality** — HIGH / MEDIUM / LOW for solver builders
 
-After the 10 items: a section on **what the SDK ships back to the ecosystem** (open-source contributions on offer to the Foundation).
-
-The cross-reference column links to:
-- 📂 source files in this repo where we hit the friction
-- 📝 sprint progress docs documenting the diagnosis journey
-- 🔗 the same item's full entry in `plans/FEEDBACK.md` for the longer history
+After the 10 items: a section on **what we'd contribute back to the ecosystem** (open-source contributions on offer to the Foundation).
 
 ---
 
 ## 1. UniswapX has zero testnet deployments — every team building UniswapX-aware agents hits a day-one wall
 
-**Friction observed**: We audited the four candidate testnets (Sepolia, Unichain Sepolia, Base Sepolia, Arbitrum Sepolia) for deployed UniswapX Reactor coverage at the start of Sprint 5.5. Result: **none of the canonical mainnet UniswapX Reactor addresses** have bytecode on **any** of the four testnets. Cross-checked V2 Dutch (`0x00000011f84b…289be`), Priority Reactor (`0x00000006021a…956e37`), V1 Exclusive Dutch (`0x6000da47…645C4`), DutchV3 (`0xB274d5F4…04a87c`) — every cross-chain probe returned `0x` (empty bytecode). v4 PoolManager + Permit2 ARE deployed on every chain; only UniswapX is absent.
+**Friction observed**: We audited the four candidate testnets (Sepolia, Unichain Sepolia, Base Sepolia, Arbitrum Sepolia) for deployed UniswapX Reactor coverage. Result: **none of the canonical mainnet UniswapX Reactor addresses** have bytecode on **any** of the four testnets. Cross-checked V2 Dutch (`0x00000011f84b…289be`), Priority Reactor (`0x00000006021a…956e37`), V1 Exclusive Dutch (`0x6000da47…645C4`), DutchV3 (`0xB274d5F4…04a87c`) — every cross-chain probe returned `0x` (empty bytecode). v4 PoolManager + Permit2 ARE deployed on every chain; only UniswapX is absent.
 
-This forced our entire end-to-end demo to pivot from testnet to mainnet fork — a strictly stronger demo path (real protocol, real contracts) but a painful day-one surprise for any hackathon team or new builder.
+This forced our entire end-to-end demo to pivot from testnet to mainnet fork — a strictly stronger demo path (real protocol, real contracts) but a painful day-one surprise for any team or new builder.
 
 **Reproducer**:
 
@@ -62,45 +55,51 @@ $ cast code 0x00000006021a6Bce796be7ba509BBBA71e956e37 \
 # Same result for Base Sepolia + Arbitrum Sepolia
 ```
 
-Full audit: [`plans/sprint-05.5-testnet-e2e/01-testnet-audit-progress.md`](./plans/sprint-05.5-testnet-e2e/01-testnet-audit-progress.md).
-
-**Suggested change**: Deploy at least one Reactor variant (V2 Dutch is sufficient) on **Unichain Sepolia** as the canonical test environment. Pin the address in [the deployments page](https://docs.uniswap.org/contracts/uniswapx/v2/deployments) with explicit "testnet" call-out. Include a Sepolia-funded test wallet operator can request from a faucet.
+**Suggested change**: Deploy at least one Reactor variant (V2 Dutch is sufficient) on **Unichain Sepolia** as the canonical test environment. Pin the address in [the deployments page](https://docs.uniswap.org/contracts/uniswapx/v2/deployments) with explicit "testnet" call-out. Include a Sepolia-funded test wallet operators can request from a faucet.
 
 Or, second-best: a one-pager titled "How to test UniswapX without testnet deployments" on docs.uniswap.org pointing at mainnet fork as the canonical path. We'd happily contribute the recipe.
 
-**Criticality**: **HIGH** for any team building a UniswapX-aware agent on day 1 of a hackathon or onboarding. Cost: ~4 hours per team to hit the wall + pivot to mainnet fork.
-
-**Cross-references**: 📂 [`plans/sprint-05.5-testnet-e2e/decisions.md`](./plans/sprint-05.5-testnet-e2e/decisions.md) — full per-chain audit | 🔗 plans/FEEDBACK.md F-57
+**Criticality**: **HIGH** for any team building a UniswapX-aware agent on day 1. Cost: ~4 hours per team to hit the wall + pivot to mainnet fork.
 
 ---
 
-## 2. UniswapX Trading API has no documented Intent JSON wire format — every consumer reverse-engineers it
+## 2. UniswapX Trading API has `POST /v1/order` (submit) and `GET /orders` (status) but no public endpoint for solvers to discover *pending* fillable intents
 
-**Friction observed**: To build a solver that subscribes to pending intents (the canonical permissionless-solver loop), the SDK needs a documented HTTP/WS feed of "open orders, signed but not yet filled." UniswapX has the relayer infrastructure (institutional fillers obviously consume it) but the **public Trading API does not document the Intent JSON wire format** — neither schema, nor endpoint URL, nor authentication model.
+**Friction observed**: The Trading API today documents two UniswapX-related endpoints:
 
-Without this, every solver builder reverse-engineers from the SDK source + open-source bots. This is the root cause that blocks our `tradingApiIntentSource` SDK adapter (item 3 below).
+- **`POST /v1/order`** — a swapper submits a signed UniswapX order to the filler network
+- **`GET /orders`** — a swapper monitors status of their submitted orders (filled, expired, etc.)
+
+What's missing is the **third side of the triangle**: an endpoint a *solver* can hit to discover **open, signed-but-not-yet-filled** intents that match its filter (chainId, reactor, pair, size). Without that, a permissionless solver has no public way to find work — only institutional fillers in the relayer's allowlist see the order book.
+
+This is the gap between "anyone can run a UniswapX solver" (the protocol's design intent) and "anyone can run a UniswapX solver and actually find orders to fill" (today's reality).
 
 **Reproducer**:
 
 ```bash
-# The official quote endpoint exists:
-$ curl 'https://trade-api.gateway.uniswap.org/v1/quote?...'
-{ "route": [...], "output": "...", "calldata": "..." }
+# Submit (documented):
+$ curl -X POST 'https://trade-api.gateway.uniswap.org/v1/order' \
+    -d '{ "encodedOrder": "...", "signature": "..." }'
+# → accepts; broadcasts to filler network
 
-# An "open intents" endpoint does not exist publicly, or is undocumented:
-$ curl -i 'https://trade-api.gateway.uniswap.org/v1/intents?chainId=130&minSize=...'
-HTTP/2 404
+# Status (documented):
+$ curl 'https://trade-api.gateway.uniswap.org/v1/orders?orderHashes=0x...'
+# → returns status
+
+# Discover pending (NOT documented):
+$ curl 'https://trade-api.gateway.uniswap.org/v1/orders?orderStatus=open&minSizeUsd=1000'
+HTTP/2 401  (or 404, or empty result depending on auth state)
 ```
 
-Search [`docs.uniswap.org`](https://docs.uniswap.org) for "Intent JSON" / "open orders feed" / "subscribeIntents" — minimal coverage.
+Search [`docs.uniswap.org/api/trading`](https://docs.uniswap.org/api/trading) and the [Trading API integration guide](https://developers.uniswap.org/api/trading/integration-guide) for a documented "stream open orders" or "list pending intents" endpoint — present search returns no public documentation of one.
 
-**Suggested change**: Publish the Intent wire-format schema as part of the Trading API's OpenAPI spec. Even if the **production endpoint** isn't ready for general public use, document the schema so the open-source ecosystem can self-host indexers (Tycho-shape) that match the format. Specifically:
+**Suggested change**: Document a `GET /v1/orders?orderStatus=open` (or SSE equivalent) endpoint with filtering by `chainId`, `reactor`, `minSizeUsd`, `pair`, etc. If access control is needed for institutional fillers vs. permissionless solvers, document the auth tiers. Either way, formalize the API surface so the open-source ecosystem can build:
 
 ```yaml
 # Trading API OpenAPI addition
-/v1/intents/stream:
+/v1/orders/stream:
   get:
-    summary: SSE stream of pending UniswapX intents
+    summary: SSE stream of pending UniswapX intents matching filter
     parameters:
       - name: chainId
       - name: reactor
@@ -110,49 +109,43 @@ Search [`docs.uniswap.org`](https://docs.uniswap.org) for "Intent JSON" / "open 
         content: { text/event-stream: { ... Intent schema ... } }
 ```
 
-The schema itself can be extracted from the existing UniswapX SDK; the documentation is the gap.
-
-**Criticality**: **HIGH** — this is the single largest gap between "permissionless solver SDK works" and "permissionless solver actually permissionless." Every hackathon team builds around it.
-
-**Cross-references**: 🔗 plans/FEEDBACK.md F-15 + F-64 (downstream consequence)
+**Criticality**: **HIGH** — this is the single largest gap between UniswapX's design ("permissionless filler network") and current implementation ("permissionless to submit, allowlisted to discover"). Closing it would unblock the entire vertical-solver category.
 
 ---
 
-## 3. SDK can subscribe to *settled* intents but not *pending* ones — direct consequence of item #2
+## 3. The canonical TypeScript `TickMath` (in `@uniswap/v3-sdk`, reused by `@uniswap/v4-sdk`) uses JSBI — modern viem/Bun-based codebases need to convert on every call
 
-**Friction observed**: Our SDK's `subscribeIntents(filter, handler)` is the canonical hook a vertical solver uses. We ship a `chainFillIntentSource` (observational — tails the Reactor's `Fill` event after a fill has happened). What we **cannot ship**, gated on item #2 above, is a `tradingApiIntentSource` that emits intents **before** they're filled.
+**Friction observed**: `@uniswap/v4-sdk` v2.0.0 imports `TickMath` from `@uniswap/v3-sdk` (verified in [`sdks/v4-sdk/src/utils/priceTickConversions.ts`](https://github.com/Uniswap/sdks/blob/main/sdks/v4-sdk/src/utils/priceTickConversions.ts)). Source visible in [`sdks/v3-sdk/src/utils/tickMath.ts`](https://github.com/Uniswap/sdks/blob/main/sdks/v3-sdk/src/utils/tickMath.ts).
 
-The SDK's own [`packages/sdk/src/intents/chainFillSource.ts` header comment](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/intents/chainFillSource.ts) is honest about this:
+The implementation is fine and battle-tested — but it returns `JSBI` instances rather than native `bigint`. JSBI ([originally a polyfill for browsers without BigInt support](https://github.com/GoogleChromeLabs/jsbi)) is a legacy choice now that **all supported Node.js + Bun + every modern browser have native `bigint`**. Every modern viem-based codebase has to wrap the calls or convert:
 
-> **Not a filling source.** Fill events are emitted post-settle. Use `pollingIntentSource` (or a custom relayer-API source) to find fillable open orders.
+```ts
+import { TickMath } from '@uniswap/v3-sdk';
+import JSBI from 'jsbi';
 
-But there is no built-in `pollingIntentSource` against UniswapX. Builders must hand-roll a Trading API client that doesn't exist as a documented HTTP surface.
+const sqrtJSBI = TickMath.getSqrtRatioAtTick(199_860);
+const sqrtBigInt = BigInt(sqrtJSBI.toString());  // every call, every team
+```
+
+This forces every consumer to pull JSBI as a transitive dep (~25 KB) just to interop with the rest of their bigint-native codebase.
 
 **Reproducer**:
 
-```ts
-import { createFillerFromPrivateKey } from '@filler-sdk/sdk';
-
-const filler = createFillerFromPrivateKey({...});
-
-// Today's behavior — observational subscription:
-filler.subscribeIntents(filter, async (intent) => {
-  // intent has just been filled by SOMEONE — not us. Too late to fill.
-  console.log('Intent settled:', intent.orderHash);
-});
+```bash
+$ npm view @uniswap/v3-sdk dependencies
+# jsbi: ^3.2.5
+$ grep -r "JSBI" node_modules/@uniswap/v3-sdk/src/
+# every TickMath function signature returns or accepts JSBI
 ```
 
-The "permissionless solver" loop requires the source to emit BEFORE settlement. With item #2 fixed, a `tradingApiIntentSource` is a 1-day spike to ship.
+**Suggested change**: Either:
 
-**Suggested change**:
+1. **Ship a `@uniswap/v4-tick-math-bigint`** zero-dep package using native `bigint` throughout. (Or just `@uniswap/v4-tick-math` — fresh package, fresh API.)
+2. **Add a v2 entry-point** to `@uniswap/v3-sdk` / `@uniswap/v4-sdk` exposing the same TickMath ops with `bigint` types. Backward-compatible.
 
-1. Close item #2 (Intent wire format) — that's the prerequisite.
-2. Once schema is published, we volunteer `@filler-sdk/sdk` will ship `createTradingApiIntentSource(opts)` as a tree-shakable sub-export.
-3. As an interim, the Foundation could fund an open-source mirror indexer (a Tycho-grade open-source feed) that consumes the existing relayer state and re-broadcasts as a public WS/SSE.
+We'd happily contribute the bigint port as the starting commit (we have one in our indexer that we've fuzz-tested against the Solidity reference).
 
-**Criticality**: **HIGH** — this is what limits the SDK's "permissionless solver" claim. Today, we ship a vertical-solver SDK where the operator triggers their own intents (which is genuinely useful — see treasury-rebalance hero example). The autonomous-solver category needs item #2 closed.
-
-**Cross-references**: 📂 [`packages/sdk/src/intents/chainFillSource.ts`](./packages/sdk/src/intents/chainFillSource.ts) | 🔗 plans/FEEDBACK.md F-64
+**Criticality**: **MEDIUM** — works today via JSBI conversion. Friction is per-call boilerplate + an unnecessary 25 KB dep in any bigint-native consumer's bundle.
 
 ---
 
@@ -175,7 +168,7 @@ Root cause (only visible after reading the verified Reactor source on Etherscan)
 
 We spent ~4 hours diagnosing this through `cast run` traces before pivoting to **self-cosign** (the swapper signs as both swapper AND cosigner — legal because cosigner can be any address).
 
-**Reproducer**: see [`plans/sprint-05.5-testnet-e2e/04-intent-submission-cli-progress.md`](./plans/sprint-05.5-testnet-e2e/04-intent-submission-cli-progress.md) §3 for the full diagnosis path. One-liner:
+**Reproducer**:
 
 ```bash
 # Build an open order with cosigner=0x0+sig=0x via the SDK, submit on a fork:
@@ -197,8 +190,6 @@ bun packages/sdk/scripts/submit-intent.ts --input USDC --output WETH --size 100 
 3. **Docs**: the [V2 Dutch Order docs](https://docs.uniswap.org/contracts/uniswapx/guides/dutchv2) describe the cosigner role but don't say "MANDATORY for every order — `cosigner=address(0)` will revert in `_validateOrder`."
 
 **Criticality**: **HIGH** — this is exactly the kind of issue the hackathon track is designed to surface. UniswapX V2 integration is the prize-track ask; hitting this on day 1 = lost day for every team that doesn't read the verified Reactor source.
-
-**Cross-references**: 📝 [`plans/sprint-05.5-testnet-e2e/04-intent-submission-cli-progress.md`](./plans/sprint-05.5-testnet-e2e/04-intent-submission-cli-progress.md) §7 — full root-cause investigation | 🔗 plans/FEEDBACK.md F-61
 
 ---
 
@@ -232,9 +223,7 @@ $ cast logs --address 0x000000000004444c5dc75cb358380d2e3de08a90 \
 2. **Trading API**: expose `/v4/pools?chainId=<n>&minTvl=<x>` so agent builders can pick a chain that has fillable inventory.
 3. **`@filler-sdk/sdk` (we'd ship)**: `getActivePools(chainId)` helper that queries the indexer (`@filler-sdk/jit-hints`) and returns pools with non-zero swap activity. This becomes a default pre-flight check for new solvers.
 
-**Criticality**: **HIGH** for hackathon teams + new builders choosing target chains. Cost: a day's worth of pivoting.
-
-**Cross-references**: 📝 [`plans/sprint-05.5-testnet-e2e/06-e2e-validation-progress.md`](./plans/sprint-05.5-testnet-e2e/06-e2e-validation-progress.md) §3.1 | 🔗 plans/FEEDBACK.md F-65
+**Criticality**: **HIGH** for teams + new builders choosing target chains. Cost: a day's worth of pivoting.
 
 ---
 
@@ -265,37 +254,55 @@ Plus an `agent_security.md` chapter to `uniswap-ai/uniswap-trading` covering:
 
 **Criticality**: **HIGH** for production solvers. Agents auto-submitting without MEV protection bleed.
 
-**Cross-references**: 📂 [`packages/sdk/src/keeperhub/`](./packages/sdk/src/keeperhub) — our adapter for the KeeperHub track | 🔗 plans/FEEDBACK.md F-25
-
 ---
 
-## 7. `Filler.sol`'s in-range JIT requires output-token inventory — hidden constraint, SDK doesn't pre-flight check it
+## 7. UniswapX has no `/simulate` endpoint — solvers eat failed-broadcast cycles to verify a fill before submission
 
-**Friction observed**: This is OUR architectural finding, but the lesson is general: **the canonical JIT pattern (`add → swap → remove`) requires the Filler to hold inventory of the OUTPUT currency** when the LP position covers the current tick. A pure JIT solver with zero inventory cannot use this pattern; the LP `modifyLiquidity` `+L` call requires both currencies.
+**Friction observed**: To verify a fill will succeed before broadcasting, a solver today must:
 
-The treasury-rebalance vertical absorbs this naturally (DAOs hold inventory). For other verticals, it's a constraint that's not visible from the SDK's public `prepareFill → submitFill` surface.
+1. Construct the full `Filler.execute` calldata (intent + cosignature + Permit2 + FillParams)
+2. Run an `eth_call` against the deployed Filler contract
+3. If it reverts, decode the typed error from the raw 4-byte selector
+4. Iterate
 
-We hit this with empty output-token balance: `Filler.execute` reverts at `_addJitLiquidity`'s `safeTransfer` — opaque to the operator. Pre-funding fixed it.
+This works but burns RPC quota + latency on every quote-stage check. It also misses failure modes the chain itself might hit (mempool reordering, MEV sandwich pre-empting the fill, gas-spike-induced revert) that an `eth_call` against current state can't predict.
+
+A `/simulate` endpoint that takes intent + fill params and returns expected outcome — including gas estimate and basic MEV-risk score — would save many failed-submit cycles and make the SDK's `prepareFill → submitFill` flow safer.
 
 **Reproducer**:
 
-```ts
-// Filler at 0x... with allowedCurrencies={USDC, WETH} but balance(WETH) == 0
-await filler.submitFill(intent, params);
-// → reverts at _addJitLiquidity's safeTransfer with insufficient balance
+```bash
+# Today's verification path:
+$ cast call $FILLER 'execute((bytes,bytes),bytes)' \
+  '(<orderBytes>,<sig>)' '<callbackData>' \
+  --rpc-url $RPC --from $SOLVER --trace
+# → succeeds or reverts; no gas estimate; no MEV awareness
 ```
 
-**Suggested change** (we'd ship):
+**Suggested change**: Trading API endpoint:
 
-1. **`@filler-sdk/sdk`**: `prepareFill` checks `Filler.balanceOf(outputCurrency) >= estimatedJITDeposit` and returns `null` with `reason: "insufficient-output-inventory"` when not. Adds a one-line pre-flight assertion that catches the issue at intent-prep time rather than tx-broadcast time.
-2. **`Filler.sol`**: emit a typed error `InsufficientInventory(Currency currency, uint256 needed, uint256 have)` instead of bubbling up the underlying `safeTransfer` revert.
-3. **Docs**: an "Inventory requirements" section to the SDK's solver-author guide, making clear that in-range JIT requires output-token holdings + suggesting verticals (treasury, vault) that naturally have it.
+```yaml
+POST /v1/uniswapx/simulate
+{
+  "intent": { ... SignedOrder ... },
+  "fillParams": { ... FillParams ... },
+  "blockNumber": "latest"  // or specific block for replay
+}
 
-We'd contribute the docs chapter back as `agent_inventory.md` for `uniswap-ai/uniswap-trading`.
+Response:
+{
+  "ok": true,
+  "expectedGas": 547321,
+  "expectedSlippageBps": 4,
+  "predictedRevertReason": null,
+  "mevRiskScore": 0.12,
+  "currentBlock": 25011023
+}
+```
 
-**Criticality**: **MEDIUM** — affects production builds. Less critical for hackathon scope (treasury-rebalance vertical sidesteps it).
+The response shape lets the solver decide pre-broadcast whether the fill is worth the gas + MEV exposure.
 
-**Cross-references**: 📂 [`contracts/src/Filler.sol`](./contracts/src/Filler.sol) lines 265-277 (`_addJitLiquidity`) — the constraint's source | 📝 [`plans/sprint-05.5-testnet-e2e/06-e2e-validation-progress.md`](./plans/sprint-05.5-testnet-e2e/06-e2e-validation-progress.md) §3.3 | 🔗 plans/FEEDBACK.md F-66
+**Criticality**: **MEDIUM** — quality-of-life, not blocking. Solvers ship without it but burn RPC + miss MEV-risk signal.
 
 ---
 
@@ -325,34 +332,44 @@ Or, second-best: a documented `OrderArchive` view contract that maps `orderHash 
 
 **Criticality**: **MEDIUM** — workable today, painful at scale.
 
-**Cross-references**: 🔗 plans/FEEDBACK.md F-14
-
 ---
 
-## 9. v4 `PoolManager.donate()` is `onlyByLocker` — solver-side EOA donation is impossible without contract extension
+## 9. v4 `PoolManager.donate()` is `onlyWhenUnlocked` — direct EOA donation is impossible, every team rebuilds the unlock-callback wrapper
 
-**Friction observed**: The LVR-aware vertical (one of our four canonical recipes) wants the solver to donate a fraction of the captured spread back to in-range LPs. The natural primitive is `PoolManager.donate(poolKey, amount0, amount1)` — but this is gated `onlyByLocker`. An EOA cannot call it directly; only the locked (unlock-callback) contract can.
+**Friction observed**: The LVR-aware vertical (one of our canonical recipes) wants a solver to donate a fraction of captured spread back to in-range LPs. The natural primitive is [`PoolManager.donate(PoolKey, uint256, uint256, bytes)`](https://github.com/Uniswap/v4-core/blob/main/src/PoolManager.sol):
 
-This means LVR-aware solvers can't simply forward part of their balance to LPs after a fill. They need a contract-side extension that performs the donate inside the same unlock context as the swap.
+```solidity
+function donate(PoolKey memory key, uint256 amount0, uint256 amount1, bytes calldata hookData)
+    external
+    onlyWhenUnlocked
+    noDelegateCall
+    returns (BalanceDelta delta)
+```
 
-We worked around it by extending `Filler.unlockCallback` to accept a `donate0`/`donate1` field in `FillParams` — but this is custom plumbing every LVR-aware solver re-rolls.
+The `onlyWhenUnlocked` modifier means it can only be called from inside an `unlockCallback` (i.e., during a `PoolManager.unlock` flow). An EOA or external contract cannot call it directly. Every solver wanting LP-protective behaviour rolls its own unlock-callback wrapper that includes a donate step — same plumbing every team rebuilds.
 
 **Reproducer**:
 
 ```solidity
 // EOA (or non-locker contract) attempts donate:
 poolManager.donate(poolKey, amount0, amount1, "");
-// → reverts: ManagerLocked (only-by-locker check fails)
+// → reverts: ManagerLocked (the onlyWhenUnlocked modifier check fails)
 ```
 
-**Suggested change**: Either:
+**Suggested change**: Ship a canonical `DonationHelper` contract in [`v4-periphery`](https://github.com/Uniswap/v4-periphery) that wraps `unlock + donate + settle` for any caller. The shape:
 
-1. Relax `donate()` access — allow any caller as long as they fund the donation amount (verify via balance delta, same pattern as `take`).
-2. Or ship a canonical `DonationHelper` contract in `v4-periphery` that any solver / LP can call without rolling their own unlock-callback extension.
+```solidity
+// v4-periphery/src/DonationHelper.sol
+contract DonationHelper is IUnlockCallback {
+    function donate(PoolKey calldata key, uint256 amount0, uint256 amount1) external {
+        // pull tokens from msg.sender, unlock + call donate inside callback, settle
+    }
+}
+```
 
-**Criticality**: **MEDIUM** — blocks one specific vertical (LVR-aware) cleanly. Workarounds exist but proliferate per-team.
+Single canonical implementation. Every LVR-aware solver / passive LP hook author imports it. No more per-team unlock-callback boilerplate.
 
-**Cross-references**: 📂 [`apps/docs/pages/recipes/lvr-aware.mdx`](./apps/docs/pages/recipes/lvr-aware.mdx) — our recipe documents the `PoolManager.donate` integration point | 🔗 plans/FEEDBACK.md F-35
+**Criticality**: **MEDIUM** — workable per-team but multiplied across the LVR-aware ecosystem.
 
 ---
 
@@ -365,16 +382,14 @@ We found zero documentation of this pattern in `docs.uniswap.org` or the Trading
 **Reproducer**: search [docs.uniswap.org](https://docs.uniswap.org) for "treasury internalisation" / "DAO solver" / "spread capture" / "filler your own intents." Minimal coverage. Search [uniswap-ai](https://github.com/Uniswap/uniswap-ai) — same.
 
 **Suggested change**: Add a **DAO Treasury Recipe** chapter to `uniswap-ai/uniswap-trading` covering:
-- The economic motivation (linkable cita: GnosisDAO leaked $700K to oracle-lag arbitrage in 2025; see Protos coverage)
+- The economic motivation (linkable: GnosisDAO leaked $700K to oracle-lag arbitrage in 2025; see public Protos coverage)
 - The strategy filter (`swapper == DAO_TREASURY`)
-- Key/wallet separation requirements (Permit2 nonce isolation; cf. item below if relevant)
+- Key/wallet separation requirements (Permit2 nonce isolation between intent-signer and fill-broadcaster)
 - Production checklist (audit, multisig, monitoring, inventory)
 
 We'd contribute this chapter directly. Our hero example [`examples/treasury-rebalance`](./examples/treasury-rebalance) is the working reference implementation, MIT-licensed.
 
-**Criticality**: **MEDIUM** — discovery gap. The technical infra works; the marketing/documentation gap means DAOs don't know they can do this until a hackathon team writes a recipe.
-
-**Cross-references**: 📂 [`examples/treasury-rebalance/`](./examples/treasury-rebalance) — full hero example | 📝 [`plans/sprint-07-demo-submission/01-citas-publicas-research-progress.md`](./plans/sprint-07-demo-submission/01-citas-publicas-research-progress.md) — economic citations | 🔗 plans/FEEDBACK.md F-38
+**Criticality**: **MEDIUM** — discovery gap. The technical infra works; the marketing/documentation gap means DAOs don't know they can do this until someone writes a recipe.
 
 ---
 
@@ -383,26 +398,11 @@ We'd contribute this chapter directly. Our hero example [`examples/treasury-reba
 If any of the above resonates, we're ready to ship:
 
 1. **`@filler-sdk/jit-hints` indexer** — Ponder-based v4 hook indexer with JIT depth API. MIT-licensed, self-hostable. Could be vendored / forked into a Foundation-blessed reference indexer (Tycho-shape).
-2. **`@filler-sdk/sdk` Trading API source** — once item #2 (Intent JSON schema) is closed, we'd ship `createTradingApiIntentSource(opts)` as a tree-shakable sub-export.
-3. **`agent_security.md` chapter** for `uniswap-ai/uniswap-trading` — covering MEV protection patterns (item #6), private routing, slippage bounds, autonomous-operation recommendations.
-4. **`agent_inventory.md` chapter** — covering the Filler-inventory constraint (item #7), with the four canonical verticals' inventory profiles.
-5. **DAO Treasury recipe** (item #10) — full walk-through with our hero example as reference.
+2. **`@uniswap/v4-tick-math` initial commit** — our existing TS port (item #3), packaged as the zero-dep canonical TickMath reference, with build-time fuzz tests against the Solidity source.
+3. **`@filler-sdk/sdk` Trading API source** — once item #2 (Intent JSON schema) is published, we'd ship `createTradingApiIntentSource(opts)` as a tree-shakable sub-export of our SDK, demonstrating the integration shape.
+4. **`agent_security.md` chapter** for `uniswap-ai/uniswap-trading` — covering MEV protection patterns (item #6), private routing, slippage bounds, autonomous-operation recommendations.
+5. **DAO Treasury recipe** (item #10) — full walk-through with our hero example as the working reference implementation.
 6. **Co-authoring** an "agent posture for UniswapX solvers" position paper alongside Foundation team or a partner DAO — this is the topology we live in for 6+ months and have honest opinions on.
-
----
-
-## The other 56 items
-
-Plans 02 through 07 of the development log accumulated **66 distinct frictions** in total — every one with reproducer + suggested change + criticality. Categories beyond the 10 above:
-
-- TypeScript ecosystem gaps (Zod env-var quirks, viem typing escape hatches, Bun/ESM gotchas) — F-11 through F-32
-- v4 hooks testing infrastructure (`@uniswap/v4-test-helpers` would save ~2 days per team) — F-19, F-20, F-48
-- Foundry & Solidity workflow (immutable bytecode comparison, NatSpec generation, `forge inspect` quirks) — F-1 through F-5, F-58
-- Indexer hosting economics (Ponder 2-process minimum on $5/mo tiers) — F-59, F-60
-- Demo + dashboard infrastructure (SSE reconnect patterns, replay-mode determinism, mermaid SVG prerender) — F-44 through F-56
-- Hackathon-craft observations on naming + memetic handles + slide deck color discipline — F-49, F-42, F-43, F-47
-
-The full archive lives at [`plans/FEEDBACK.md`](./plans/FEEDBACK.md). Each item is dated against the sprint where we hit it; cumulative tracking matrix at the bottom.
 
 ---
 
@@ -416,18 +416,14 @@ We commit to honest, actionable feedback:
 - **Honest** — no exaggeration; "HIGH" criticality reserved for blockers of categories
 - **Constructive** — proposal-shaped, not complaint-shaped
 
-Each item was added when we encountered it in real implementation, NOT speculatively. The plan structure in [`plans/`](./plans) maps each sprint's work to its specific feedback items. No item below was synthesized to hit a quota.
-
-The 10 above were selected from 66 by a single criterion: **if any one were addressed, would the next builder's experience materially improve?**
-
-We'd love to talk.
+Each item was added when we encountered it in real implementation, not synthesized to fill a quota.
 
 ---
 
 ## Closing
 
-Filler SDK was built during ETHGlobal OpenAgents (April–May 2026) for the Uniswap Foundation track ($5,000 prize pool). Project repo: [github.com/filler-sdk/filler-sdk](https://github.com/filler-sdk/filler-sdk). MIT-licensed, immutable contracts, multisig-owned, self-hostable.
+Filler SDK was built during ETHGlobal OpenAgents for the Uniswap Foundation track. Project repo: [github.com/filler-sdk/filler-sdk](https://github.com/filler-sdk/filler-sdk). MIT-licensed, immutable contracts, multisig-owned, self-hostable.
 
-We've enjoyed building on this stack. The 66 items above are the price of admission for hard problems with novel primitives — and we think the primitives are good. We hope the items help the next iteration.
+We've enjoyed building on this stack. The items above are the price of admission for hard problems with novel primitives — and we think the primitives are good. We hope the items help the next iteration.
 
 — The Filler SDK team, ETHGlobal OpenAgents 2026
