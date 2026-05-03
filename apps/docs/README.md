@@ -129,7 +129,7 @@ For new pages: also add the route to the sidebar in [`vocs.config.ts`](./vocs.co
 
 ## Deploy
 
-- **Production**: Vercel project (`docs.filler-sdk.xyz`) — deploy is `bunx vercel --prod` or auto-deploy via the GitHub integration. CI workflow has the `deploy` job gated behind a `VERCEL_TOKEN` secret.
+- **Production**: Vercel project (`filler-sdk-docs.vercel.app`) — deploy is `bunx vercel --prod` or auto-deploy via the GitHub integration. CI workflow has the `deploy` job gated behind a `VERCEL_TOKEN` secret.
 - **Preview**: each PR's `docs.yml` workflow uploads the build as an artifact (14-day retention).
 
 ## License

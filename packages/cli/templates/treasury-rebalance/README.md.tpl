@@ -147,7 +147,7 @@ decide(intent: Intent, params: FillParams): boolean {
 
 ## Documentation
 
-- [Filler SDK reference](https://docs.filler-sdk.xyz)
+- [Filler SDK reference](https://filler-sdk-docs.vercel.app)
 - [Plan 05 progress doc](https://github.com/DavidZapataOh/filler-sdk/blob/main/plans/sprint-04-cli-references/05-treasury-rebalance-progress.md)
 - [Sprint 05 dashboard](https://github.com/DavidZapataOh/filler-sdk/tree/main/plans/sprint-05-dashboard) — what consumes the SSE stream
 

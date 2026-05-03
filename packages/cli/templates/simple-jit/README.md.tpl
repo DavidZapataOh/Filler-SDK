@@ -94,7 +94,7 @@ container). For production:
 
 ## Documentation
 
-- [Filler SDK reference](https://docs.filler-sdk.xyz)
+- [Filler SDK reference](https://filler-sdk-docs.vercel.app)
 - [JIT-hints indexer](https://github.com/DavidZapataOh/filler-sdk/tree/main/packages/jit-hints)
 - [Sprint 04 plans](https://github.com/DavidZapataOh/filler-sdk/tree/main/plans/sprint-04-cli-references)
 

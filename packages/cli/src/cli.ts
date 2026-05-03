@@ -426,7 +426,7 @@ export async function main(argv: readonly string[]): Promise<number> {
       `  ${pc.dim('# fill SOLVER_PRIVATE_KEY + RPC_URL in .env')}`,
       `  ${pc.cyan(config.install ? 'bun start' : 'bun install && bun start')}`,
       '',
-      pc.dim('Documentation: https://docs.filler-sdk.xyz'),
+      pc.dim('Documentation: https://filler-sdk-docs.vercel.app'),
       pc.dim('Tres archivos y un bond. ⚡'),
     ].join('\n'),
   );

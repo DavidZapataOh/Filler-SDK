@@ -16,10 +16,10 @@ export default defineConfig({
   titleTemplate: '%s · Filler SDK',
   description: 'Tres archivos y un bond. Deploy vertical UniswapX solvers in npm install.',
   rootDir: '.',
-  baseUrl: 'https://docs.filler-sdk.xyz',
+  baseUrl: 'https://filler-sdk-docs.vercel.app',
 
   iconUrl: '/icon.svg',
-  ogImageUrl: 'https://docs.filler-sdk.xyz/og.png',
+  ogImageUrl: 'https://filler-sdk-docs.vercel.app/og.png',
 
   head: mermaidClientScript,
 
