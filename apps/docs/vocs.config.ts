@@ -1,4 +1,15 @@
+import { createElement } from 'react';
 import { defineConfig } from 'vocs';
+import rehypeMermaid from 'rehype-mermaid';
+
+// Client-side mermaid bootstrap. With `pre-mermaid` strategy the build
+// emits <pre class="mermaid"> nodes; this script loads mermaid in the
+// browser and converts them to SVG. Served from /public/mermaid-init.js
+// rather than inlined because Vocs strips inline <script> from `head`.
+const mermaidClientScript = createElement('script', {
+  type: 'module',
+  src: '/mermaid-init.js',
+});
 
 export default defineConfig({
   title: 'Filler SDK',
@@ -9,6 +20,8 @@ export default defineConfig({
 
   iconUrl: '/icon.svg',
   ogImageUrl: 'https://docs.filler-sdk.xyz/og.png',
+
+  head: mermaidClientScript,
 
   theme: {
     accentColor: { dark: '#06b6d4', light: '#0891b2' },
@@ -127,5 +140,10 @@ export default defineConfig({
         dark: 'github-dark',
       },
     },
+    // Mermaid: render client-side (no Playwright/Chromium during build).
+    // Vercel sandbox lacks libnspr4 system lib; `pre-mermaid` strategy
+    // emits <pre class="mermaid"> nodes that the mermaid client lib
+    // converts to SVG in the browser.
+    rehypePlugins: [[rehypeMermaid, { strategy: 'pre-mermaid' }]],
   },
 });

@@ -6,7 +6,7 @@
   "description": "Filler SDK — public documentation site (Vocs)",
   "scripts": {
     "dev": "vocs dev",
-    "build": "playwright install chromium-headless-shell && vocs build",
+    "build": "vocs build",
     "preview": "vocs preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -14,15 +14,16 @@
     "clean": "rm -rf dist .vocs"
   },
   "dependencies": {
+    "mermaid": "^11.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "rehype-mermaid": "^3.0.0",
     "vocs": "^1.4.1"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "playwright": "^1.59.0",
     "typescript": "^5.6.0",
     "vitest": "^4.1.5"
   },
