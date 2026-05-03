@@ -1,3 +1,4 @@
 # Vocs build output
 dist
 .vocs
+.vercel
