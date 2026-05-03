@@ -44,7 +44,7 @@ describe('App', () => {
     expect(screen.getByText('Before')).toBeInTheDocument();
     expect(screen.getByText('After')).toBeInTheDocument();
     // Tagline appears in Hero + header subtitle + footer — at least one.
-    expect(screen.getAllByText(/Tres archivos y un bond/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Three files and a bond/i).length).toBeGreaterThan(0);
   });
 
   test('Plan 03 — the live-capture h2 is below the hero', () => {
@@ -68,17 +68,15 @@ describe('App', () => {
     expect(liveBadge?.getAttribute('data-status')).toBe('disconnected');
   });
 
-  test('Plans 03/04/05/07 — four placeholder slots present', () => {
+  test('Plans 03/04/05/07 — core demo sections present', () => {
     render(<App />);
     expect(screen.getByText(/JIT depth/i)).toBeInTheDocument();
-    expect(screen.getByText(/Three files/i)).toBeInTheDocument();
-    expect(screen.getByText(/Recent fills/i)).toBeInTheDocument();
-    expect(screen.getByText(/Replay mode/i)).toBeInTheDocument();
+    expect(screen.getByTestId('three-files-reveal')).toBeInTheDocument();
   });
 
-  test('keeps the "tres archivos y un bond" tagline somewhere on the page', () => {
+  test('keeps the "Three files and a bond" tagline somewhere on the page', () => {
     render(<App />);
     // The tagline appears in the Hero, the header subtitle, and the footer.
-    expect(screen.getAllByText(/tres archivos y un bond/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/three files and a bond/i).length).toBeGreaterThan(0);
   });
 });

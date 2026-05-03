@@ -422,7 +422,7 @@ Each item was added when we encountered it in real implementation, not synthesiz
 
 ## Closing
 
-Filler SDK was built during ETHGlobal OpenAgents for the Uniswap Foundation track. Project repo: [github.com/filler-sdk/filler-sdk](https://github.com/filler-sdk/filler-sdk). MIT-licensed, immutable contracts, multisig-owned, self-hostable.
+Filler SDK was built during ETHGlobal OpenAgents for the Uniswap Foundation track. Project repo: [github.com/DavidZapataOh/filler-sdk](https://github.com/DavidZapataOh/filler-sdk). MIT-licensed, immutable contracts, multisig-owned, self-hostable.
 
 We've enjoyed building on this stack. The items above are the price of admission for hard problems with novel primitives — and we think the primitives are good. We hope the items help the next iteration.
 

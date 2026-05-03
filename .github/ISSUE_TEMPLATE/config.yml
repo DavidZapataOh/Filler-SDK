@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/filler-sdk/filler-sdk/security/advisories/new
+    url: https://github.com/DavidZapataOh/filler-sdk/security/advisories/new
     about: Security issues should NEVER be filed as public issues. Use a private security advisory or email security@filler-sdk.xyz.
   - name: Question / discussion
-    url: https://github.com/filler-sdk/filler-sdk/discussions
+    url: https://github.com/DavidZapataOh/filler-sdk/discussions
     about: For usage questions, design discussions, or general chat — open a Discussion instead of an Issue.

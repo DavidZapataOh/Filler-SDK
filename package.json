@@ -7,9 +7,13 @@
   "homepage": "https://filler-sdk.xyz",
   "repository": {
     "type": "git",
-    "url": "https://github.com/filler-sdk/filler-sdk.git"
+    "url": "https://github.com/DavidZapataOh/filler-sdk.git"
   },
-  "workspaces": ["packages/*", "examples/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "examples/*",
+    "apps/*"
+  ],
   "scripts": {
     "build": "bun run --filter '*' build",
     "e2e:fork": "bun packages/sdk/scripts/e2e-fork.ts",

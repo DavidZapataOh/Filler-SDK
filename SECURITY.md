@@ -8,7 +8,7 @@ Filler SDK ships smart contracts and off-chain solver infrastructure that handle
 
 Report via one of:
 
-1. **Private security advisory** (preferred): https://github.com/filler-sdk/filler-sdk/security/advisories/new
+1. **Private security advisory** (preferred): https://github.com/DavidZapataOh/filler-sdk/security/advisories/new
 2. **Email**: **security@filler-sdk.xyz** (PGP key below)
 
 We aim to:

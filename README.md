@@ -2,8 +2,8 @@
 
 > *"Tres archivos y un bond."*
 
-[![CI](https://github.com/filler-sdk/filler-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/filler-sdk/filler-sdk/actions/workflows/ci.yml)
-[![Docs](https://github.com/filler-sdk/filler-sdk/actions/workflows/docs.yml/badge.svg)](https://github.com/filler-sdk/filler-sdk/actions/workflows/docs.yml)
+[![CI](https://github.com/DavidZapataOh/filler-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/DavidZapataOh/filler-sdk/actions/workflows/ci.yml)
+[![Docs](https://github.com/DavidZapataOh/filler-sdk/actions/workflows/docs.yml/badge.svg)](https://github.com/DavidZapataOh/filler-sdk/actions/workflows/docs.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Solidity 0.8.30](https://img.shields.io/badge/Solidity-0.8.30-363636.svg?logo=solidity)](./contracts/foundry.toml)
 [![Bun](https://img.shields.io/badge/Bun-1.1.30%2B-fbf0df?logo=bun&logoColor=000)](https://bun.sh)
@@ -17,7 +17,7 @@ The SDK to deploy vertical UniswapX solvers in `npm install`.
 ## Quickstart — first verified on-chain fill in 25 seconds
 
 ```bash
-git clone https://github.com/filler-sdk/filler-sdk
+git clone https://github.com/DavidZapataOh/filler-sdk
 cd filler-sdk
 bun install
 bun run e2e:fork

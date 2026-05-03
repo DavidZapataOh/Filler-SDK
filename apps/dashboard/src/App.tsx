@@ -21,7 +21,7 @@
  * source.
  */
 
-import { ArrowUpRight, Github } from 'lucide-react';
+import { Github } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { Hero } from './components/Hero/Hero';
@@ -104,7 +104,7 @@ function Header({
           <BrandMark />
           <span className="text-sm font-semibold text-[--color-text-default]">Filler SDK</span>
           <span className="hidden text-xs text-[--color-text-subtle] sm:inline">
-            · Tres archivos y un bond
+            · Three files and a bond
           </span>
         </div>
 
@@ -112,7 +112,7 @@ function Header({
           {replayName !== null && <ReplayBadge name={replayName} />}
           <LiveBadge status={badgeStatus} />
           <a
-            href="https://github.com/filler-sdk/filler-sdk"
+            href="https://github.com/DavidZapataOh/filler-sdk"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 rounded-md border border-[--color-border-subtle] px-2.5 py-1 text-xs text-[--color-text-muted] transition hover:bg-[--color-surface-2] hover:text-[--color-text-default]"
@@ -153,12 +153,12 @@ function ReplayBadge({ name }: { name: string }): JSX.Element {
 
 function BrandMark(): JSX.Element {
   return (
-    <span
+    <img
+      src="/filler.svg"
+      alt=""
       aria-hidden="true"
-      className="relative inline-flex size-5 items-center justify-center rounded-md border border-[--color-border-default] bg-[--color-surface-2]"
-    >
-      <span className="size-1.5 rounded-full bg-[--color-money]" />
-    </span>
+      className="size-6 rounded-md"
+    />
   );
 }
 
@@ -211,32 +211,7 @@ function VisualisationGrid({
       ) : (
         <ThreeFilesReveal className="lg:col-span-2" />
       )}
-      <Card
-        title="Recent fills"
-        body="The last 10 spread-captured events scroll here once SSE is wired."
-      />
-      <Card
-        title="Replay mode"
-        body="Append ?replay=treasury|lvr|simple to the URL for an offline-deterministic demo."
-      />
     </section>
-  );
-}
-
-interface CardProps {
-  title: string;
-  body: string;
-}
-
-function Card({ title, body }: CardProps): JSX.Element {
-  return (
-    <div className="rounded-lg border border-[--color-border-subtle] bg-[--color-surface-1] p-5 transition hover:border-[--color-border-default]">
-      <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[--color-text-default]">{title}</h3>
-        <ArrowUpRight aria-hidden="true" className="size-4 text-[--color-text-faint]" />
-      </div>
-      <p className="text-sm text-[--color-text-muted]">{body}</p>
-    </div>
   );
 }
 
@@ -247,7 +222,7 @@ function Footer(): JSX.Element {
     <footer className="border-t border-[--color-border-subtle]">
       <div className="mx-auto flex max-w-5xl flex-col gap-2 px-6 py-6 text-xs text-[--color-text-subtle] sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <span>Filler SDK is MIT-licensed. Self-host the indexer, the SDK, and the contracts.</span>
-        <span className="font-mono text-[--color-text-faint]">tres archivos y un bond</span>
+        <span className="font-mono text-[--color-text-faint]">three files and a bond</span>
       </div>
     </footer>
   );

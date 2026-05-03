@@ -87,7 +87,7 @@ const FILES: readonly FileEntry[] = [
   {
     name: 'FillerBond.sol',
     lang: 'Solidity',
-    blurb: 'y un bond',
+    blurb: 'Skin in the game',
     icon: Coins,
     isBond: true,
   },
@@ -155,14 +155,14 @@ export function ThreeFilesReveal({
           // visual cue for "this is THE quote."
           className="mt-1 font-mono text-lg italic text-[--color-text-default] sm:text-xl"
         >
-          &ldquo;Tres archivos y un bond.&rdquo;
+          &ldquo;Three files and a bond.&rdquo;
         </h3>
       </header>
 
       <ol
         // <ol> conveys ordered phases for assistive tech; the visible
         // grid layout is purely visual.
-        aria-label="The four files in a Filler SDK solver"
+        aria-label="Three files and a bond — Filler SDK solver structure"
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
         {FILES.map((file, i) => (

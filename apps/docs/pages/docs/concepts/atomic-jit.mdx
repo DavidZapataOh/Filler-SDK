@@ -62,7 +62,7 @@ sequenceDiagram
 
 ## The contract — verifiable
 
-The whole pattern is ~50 lines in [`Filler.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/Filler.sol):
+The whole pattern is ~50 lines in [`Filler.sol`](https://github.com/DavidZapataOh/filler-sdk/blob/main/contracts/src/Filler.sol):
 
 ```solidity
 function unlockCallback(bytes calldata data) external onlyPoolManager returns (bytes memory) {
@@ -99,10 +99,10 @@ The off-chain calibration is where the SDK adds value. See [JIT Inventory Hints]
 
 ## Read the code
 
-- Smart contract: [`contracts/src/Filler.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/Filler.sol)
-- Off-chain calibration: [`packages/sdk/src/fills/tickCalibration.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/fills/tickCalibration.ts)
-- Delta settler: [`contracts/src/libraries/DeltaSettler.sol`](https://github.com/filler-sdk/filler-sdk/blob/main/contracts/src/libraries/DeltaSettler.sol)
-- E2E proof: [`packages/sdk/scripts/e2e-fork.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/scripts/e2e-fork.ts)
+- Smart contract: [`contracts/src/Filler.sol`](https://github.com/DavidZapataOh/filler-sdk/blob/main/contracts/src/Filler.sol)
+- Off-chain calibration: [`packages/sdk/src/fills/tickCalibration.ts`](https://github.com/DavidZapataOh/filler-sdk/blob/main/packages/sdk/src/fills/tickCalibration.ts)
+- Delta settler: [`contracts/src/libraries/DeltaSettler.sol`](https://github.com/DavidZapataOh/filler-sdk/blob/main/contracts/src/libraries/DeltaSettler.sol)
+- E2E proof: [`packages/sdk/scripts/e2e-fork.ts`](https://github.com/DavidZapataOh/filler-sdk/blob/main/packages/sdk/scripts/e2e-fork.ts)
 
 ## Next
 

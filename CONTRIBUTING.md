@@ -22,7 +22,7 @@ Thanks for considering contributing! This document covers local setup, conventio
 ### Initial setup
 
 ```bash
-git clone https://github.com/filler-sdk/filler-sdk.git
+git clone https://github.com/DavidZapataOh/filler-sdk.git
 cd filler-sdk
 bun install
 
@@ -151,8 +151,8 @@ For non-trivial design choices, add an [Architecture Decision Record (ADR)](./do
 
 ## Getting help
 
-- **Questions / discussions** → [GitHub Discussions](https://github.com/filler-sdk/filler-sdk/discussions)
-- **Bugs** → [Bug Report Issue](https://github.com/filler-sdk/filler-sdk/issues/new?template=bug_report.yml)
+- **Questions / discussions** → [GitHub Discussions](https://github.com/DavidZapataOh/filler-sdk/discussions)
+- **Bugs** → [Bug Report Issue](https://github.com/DavidZapataOh/filler-sdk/issues/new?template=bug_report.yml)
 - **Security vulnerabilities** → email **security@filler-sdk.xyz** (see [SECURITY.md](./SECURITY.md)) — **do not file public issues for security**
 - **Discord** → https://discord.gg/filler-sdk
 

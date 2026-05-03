@@ -29,11 +29,11 @@ export default defineConfig({
     { text: 'Docs', link: '/docs/intro' },
     { text: 'Recipes', link: '/recipes' },
     { text: 'API', link: '/api/sdk' },
-    { text: 'GitHub', link: 'https://github.com/filler-sdk/filler-sdk' },
+    { text: 'GitHub', link: 'https://github.com/DavidZapataOh/filler-sdk' },
   ],
 
   socials: [
-    { icon: 'github', link: 'https://github.com/filler-sdk/filler-sdk' },
+    { icon: 'github', link: 'https://github.com/DavidZapataOh/filler-sdk' },
   ],
 
   sidebar: [
@@ -116,7 +116,7 @@ export default defineConfig({
   ],
 
   editLink: {
-    pattern: 'https://github.com/filler-sdk/filler-sdk/edit/main/apps/docs/pages/:path',
+    pattern: 'https://github.com/DavidZapataOh/filler-sdk/edit/main/apps/docs/pages/:path',
     text: 'Edit this page on GitHub',
   },
 

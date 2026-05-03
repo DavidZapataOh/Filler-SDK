@@ -121,7 +121,7 @@ function Tagline(): JSX.Element {
           // default text token so it's prominent but not loud.
           className="font-mono text-xl font-semibold tracking-tight text-[--color-text-default] sm:text-2xl"
         >
-          &ldquo;Tres archivos y un bond.&rdquo;
+          &ldquo;Three files and a bond.&rdquo;
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.2em] text-[--color-text-subtle]">
           The SDK to deploy vertical UniswapX solvers in&nbsp;

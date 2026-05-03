@@ -116,8 +116,8 @@ async decide(intent, params, minProfitWei, ctx) {
 ## Documentation
 
 - [Filler SDK reference](https://docs.filler-sdk.xyz)
-- [Plan 04 progress doc](https://github.com/filler-sdk/filler-sdk/blob/main/plans/sprint-04-cli-references/04-lvr-aware-template-progress.md) — design rationale + on-chain-donate gap
-- [Sprint 01 contract roadmap](https://github.com/filler-sdk/filler-sdk/tree/main/plans/sprint-01-smart-contracts) — when on-chain donate ships
+- [Plan 04 progress doc](https://github.com/DavidZapataOh/filler-sdk/blob/main/plans/sprint-04-cli-references/04-lvr-aware-template-progress.md) — design rationale + on-chain-donate gap
+- [Sprint 01 contract roadmap](https://github.com/DavidZapataOh/filler-sdk/tree/main/plans/sprint-01-smart-contracts) — when on-chain donate ships
 
 ## License
 

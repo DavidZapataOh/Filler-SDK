@@ -46,9 +46,9 @@ describe('Hero', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'npm install' })).toBeInTheDocument();
   });
 
-  test('renders the tagline + the "tres archivos" pitch line', () => {
+  test('renders the tagline + the "three files" pitch line', () => {
     render(<Hero />);
-    expect(screen.getByText(/Tres archivos y un bond/i)).toBeInTheDocument();
+    expect(screen.getByText(/Three files and a bond/i)).toBeInTheDocument();
     expect(screen.getByText(/The SDK to deploy vertical UniswapX solvers/i)).toBeInTheDocument();
   });
 

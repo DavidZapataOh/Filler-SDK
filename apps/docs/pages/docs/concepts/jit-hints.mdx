@@ -37,7 +37,7 @@ flowchart LR
     Solver -->|FillParams| Filler[Filler.sol]
 ```
 
-Every step is open-source ([packages/jit-hints/](https://github.com/filler-sdk/filler-sdk/tree/main/packages/jit-hints)) and self-hostable.
+Every step is open-source ([packages/jit-hints/](https://github.com/DavidZapataOh/filler-sdk/tree/main/packages/jit-hints)) and self-hostable.
 
 ## API surface
 
@@ -96,7 +96,7 @@ Returns:
 5. **Subtract gas cost** in input-token-equivalent (via gas oracle)
 6. **Return optimal range** with safety margin applied (`safetyMarginTicks * tickSpacing` per side)
 
-The TickMath BigInt port that powers steps 1–3 is in [`packages/jit-hints/src/tickMath.ts`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/jit-hints/src) — kept in sync with the Solidity `TickMath.sol` from v4-core.
+The TickMath BigInt port that powers steps 1–3 is in [`packages/jit-hints/src/tickMath.ts`](https://github.com/DavidZapataOh/filler-sdk/tree/main/packages/jit-hints/src) — kept in sync with the Solidity `TickMath.sol` from v4-core.
 
 ## How the SDK consumes it
 
@@ -113,7 +113,7 @@ const fillParams = await filler.prepareFill(intent);
 // → returns null if no fillable depth, or { poolKey, tickLower, tickUpper, liquidityDelta, ... }
 ```
 
-The `tickCalibration.ts` layer in the SDK refines indexer hints into v4-safe ticks (snaps to `tickSpacing`, applies safety margins, caps liquidity multipliers). See [`packages/sdk/src/fills/tickCalibration.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/fills/tickCalibration.ts).
+The `tickCalibration.ts` layer in the SDK refines indexer hints into v4-safe ticks (snaps to `tickSpacing`, applies safety margins, caps liquidity multipliers). See [`packages/sdk/src/fills/tickCalibration.ts`](https://github.com/DavidZapataOh/filler-sdk/blob/main/packages/sdk/src/fills/tickCalibration.ts).
 
 ## Why this is the differentiator
 
@@ -137,9 +137,9 @@ The indexer is open-source — every gap is a fork-able PR. We track these in th
 
 ## Read the code
 
-- Indexer source: [`packages/jit-hints/`](https://github.com/filler-sdk/filler-sdk/tree/main/packages/jit-hints)
-- TickMath port: [`packages/jit-hints/src/tickMath.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/jit-hints/src/tickMath.ts)
-- SDK consumption: [`packages/sdk/src/fills/tickCalibration.ts`](https://github.com/filler-sdk/filler-sdk/blob/main/packages/sdk/src/fills/tickCalibration.ts)
+- Indexer source: [`packages/jit-hints/`](https://github.com/DavidZapataOh/filler-sdk/tree/main/packages/jit-hints)
+- TickMath port: [`packages/jit-hints/src/tickMath.ts`](https://github.com/DavidZapataOh/filler-sdk/blob/main/packages/jit-hints/src/tickMath.ts)
+- SDK consumption: [`packages/sdk/src/fills/tickCalibration.ts`](https://github.com/DavidZapataOh/filler-sdk/blob/main/packages/sdk/src/fills/tickCalibration.ts)
 
 ## Next
 

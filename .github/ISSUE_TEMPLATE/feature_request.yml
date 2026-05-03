@@ -8,7 +8,7 @@ body:
     attributes:
       value: |
         Before filing, check if your idea overlaps with the
-        [`plans/`](https://github.com/filler-sdk/filler-sdk/tree/main/../plans)
+        [`plans/`](https://github.com/DavidZapataOh/filler-sdk/tree/main/../plans)
         directory in the parent repo, or with the published roadmap.
 
   - type: textarea

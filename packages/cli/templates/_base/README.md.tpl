@@ -39,8 +39,8 @@ See `src/index.ts` for the full solver loop.
 ## Documentation
 
 - [Filler SDK reference](https://docs.filler-sdk.xyz) — types, errors, surfaces.
-- [JIT-hints indexer](https://github.com/filler-sdk/filler-sdk/tree/main/packages/jit-hints) — self-host for private depth queries.
-- [Sprint 04 plans](https://github.com/filler-sdk/filler-sdk/tree/main/plans/sprint-04-cli-references) — what `create-filler` ships per vertical.
+- [JIT-hints indexer](https://github.com/DavidZapataOh/filler-sdk/tree/main/packages/jit-hints) — self-host for private depth queries.
+- [Sprint 04 plans](https://github.com/DavidZapataOh/filler-sdk/tree/main/plans/sprint-04-cli-references) — what `create-filler` ships per vertical.
 
 ## License
 

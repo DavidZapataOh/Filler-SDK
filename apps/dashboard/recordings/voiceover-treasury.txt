@@ -3,6 +3,7 @@ Voiceover script — treasury rebalance demo (~90 seconds)
 
 Source fixture: src/fixtures/treasury.ts
 Replay URL:     http://localhost:4173/?replay=treasury
+Citations:      see plans/pitch-citas.md (Protos GnosisDAO, Apr 2026)
 
 Timeline (mm:ss):
 
@@ -13,10 +14,12 @@ Timeline (mm:ss):
 
 [00:08 – 00:30]  STAT KILLER + INTRO.
 
-  "Karpatkey reports Aave spent over a million dollars in execution
-  costs in 2025. Compound, similar. Frax, Optimism, ENS — every DAO
-  with a real treasury is leaking spread to aggregators they don't
-  even directly negotiate with. Today we close that gap."
+  "GnosisDAO had a hundred and seventy-five million dollar treasury.
+  In 2025, public reporting shows seven hundred thousand dollars leaked
+  to oracle-lag arbitrage in a single pool, plus eight million in
+  concentrated liquidity that sat out of range earning nothing. Every
+  DAO with a real treasury is paying this silent tax. Today we close
+  that gap."
 
   "Filler SDK deploys a vertical UniswapX solver in npm install.
   Tres archivos y un bond. Demo in ninety seconds."
@@ -32,10 +35,10 @@ Timeline (mm:ss):
 [01:00 – 01:25]  JIT DEPTH chart proves the technical claim.
 
   "Behind the scenes, the SDK queries our indexer for available
-  JIT depth — liquidity that the Trading API doesn't expose. The
-  solver computes the optimal tick range, submits an atomic JIT-add,
-  swap, JIT-remove, all in one transaction. That green band is our
-  contribution: capital we provided in-band so the trade lands at
+  JIT depth — liquidity the Trading API doesn't expose. The solver
+  computes the optimal tick range, submits an atomic JIT-add, swap,
+  JIT-remove, all in one transaction. That green band is our
+  contribution: capital we provide in-band so the trade lands at
   the price the treasury wants."
 
 [01:25 – 01:35]  THREE FILES REVEAL — climax.
@@ -58,5 +61,12 @@ Notes for the operator
 ----------------------
 - Pace: 130-150 wpm. Don't rush the tres-archivos beat — let each card breathe.
 - Tone: confident, not pitchy. The numbers carry the emotion; let them.
-- Pronunciation: "Karpatkey" (kar-pat-key), "Wintermute" (winter-mute).
+- Pronunciation: "Karpatkey" (kar-pat-key), "Wintermute" (winter-mute),
+  "GnosisDAO" (no-sis-DAO with hard 'g'), "$700K" → "seven hundred thousand".
 - The Spanish phrase "tres archivos y un bond" stays Spanish — don't anglicize.
+- Source for the GnosisDAO numbers: Protos coverage, April 2026
+  https://protos.com/defi-gets-leaner-gnosis-fires-treasury-manager-with-88-backing/
+- If pressed on accuracy, the $700K is from cumulative 2024-2025 EURe/sDAI
+  pool oracle-lag arbitrage; the $8M is concentrated liquidity that sat
+  out of range. Both verifiable in the same article. See
+  plans/pitch-citas.md for the full citation context.

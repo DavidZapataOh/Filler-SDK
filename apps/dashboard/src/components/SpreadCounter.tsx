@@ -73,10 +73,19 @@ interface SpreadCounterProps {
 const DEFAULT_EXPLORER = 'https://uniscan.xyz/tx';
 /** Glow stays on for this long after the latest event before fading out. */
 const GLOW_HOLD_MS = 720;
+/** How many recent fills to keep in the rolling buffer. */
+const RECENT_FILLS_LIMIT = 10;
 /** Currency formatter for the per-fill delta — 2 decimals, en-US locale. */
 const USD_FORMATTER = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
+});
+/** Wall-clock formatter for fill timestamps — HH:MM:SS, locale-stable. */
+const TIME_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
 });
 
 export function SpreadCounter({
@@ -85,7 +94,7 @@ export function SpreadCounter({
   className,
 }: SpreadCounterProps): JSX.Element {
   const [total, setTotal] = useState(0);
-  const [lastFill, setLastFill] = useState<SpreadEvent | null>(null);
+  const [recentFills, setRecentFills] = useState<SpreadEvent[]>([]);
   const [glow, setGlow] = useState(false);
   const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -102,7 +111,7 @@ export function SpreadCounter({
           // Server is authoritative on cumulative — guards against double-
           // counting on SSE reconnect. (See top-of-file note + F-45.)
           setTotal(event.totalUSD);
-          setLastFill(event);
+          setRecentFills((fills) => [event, ...fills].slice(0, RECENT_FILLS_LIMIT));
           setGlow(true);
           if (glowTimer.current !== null) clearTimeout(glowTimer.current);
           glowTimer.current = setTimeout(() => setGlow(false), GLOW_HOLD_MS);
@@ -148,10 +157,10 @@ export function SpreadCounter({
 
       <BigNumber total={total} />
 
-      {/* Last-fill row. When no fill has landed yet, render a placeholder
-          row with the same height so the card doesn't shift on first event
-          (CLS budget). */}
-      <LastFillRow fill={lastFill} explorerBaseUrl={explorerBaseUrl} />
+      {/* Rolling buffer of the last N fills. The first row is the latest —
+          it carries the legacy data-testids (`spread-counter-tx-link`,
+          `spread-counter-delta`) so existing tests still pass. */}
+      <RecentFillsList fills={recentFills} explorerBaseUrl={explorerBaseUrl} />
     </div>
   );
 }
@@ -193,20 +202,27 @@ function BigNumber({ total }: BigNumberProps): JSX.Element {
   );
 }
 
-// === Last fill row ========================================================
+// === Recent fills list ====================================================
 
-interface LastFillRowProps {
-  fill: SpreadEvent | null;
+interface RecentFillsListProps {
+  fills: SpreadEvent[];
   explorerBaseUrl: string;
 }
 
-function LastFillRow({ fill, explorerBaseUrl }: LastFillRowProps): JSX.Element {
+function RecentFillsList({ fills, explorerBaseUrl }: RecentFillsListProps): JSX.Element {
   return (
     <div className="border-t border-[--color-border-subtle] pt-4">
-      <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-[--color-text-subtle]">
-        Last fill
-      </p>
-      {fill === null ? (
+      <div className="mb-3 flex items-baseline justify-between">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-[--color-text-subtle]">
+          Recent fills
+        </p>
+        {fills.length > 0 && (
+          <p className="font-mono text-xs text-[--color-text-faint] tabular-nums">
+            {fills.length} / {RECENT_FILLS_LIMIT}
+          </p>
+        )}
+      </div>
+      {fills.length === 0 ? (
         <p
           aria-live="polite"
           className="text-sm text-[--color-text-faint]"
@@ -215,29 +231,62 @@ function LastFillRow({ fill, explorerBaseUrl }: LastFillRowProps): JSX.Element {
           Waiting for the first fill…
         </p>
       ) : (
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <a
-            href={`${explorerBaseUrl}/${fill.txHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 font-mono text-xs text-[--color-text-muted] transition hover:text-[--color-text-default]"
-            data-testid="spread-counter-tx-link"
-          >
-            <span className="truncate">
-              {fill.txHash.slice(0, 10)}…{fill.txHash.slice(-6)}
-            </span>
-            <ExternalLink aria-hidden="true" className="size-3 text-[--color-text-faint]" />
-          </a>
-          {/* Per-fill delta uses the money color — same family as the Big
-              Number. Mono+tabular so the digits align across consecutive fills. */}
-          <span
-            className="font-mono font-semibold tabular-nums text-[--color-money]"
-            data-testid="spread-counter-delta"
-          >
-            +${USD_FORMATTER.format(fill.amountUSD)}
-          </span>
-        </div>
+        <ul className="flex flex-col gap-1.5" data-testid="spread-counter-fills-list">
+          {fills.map((fill, i) => (
+            <FillRow
+              key={fill.txHash}
+              fill={fill}
+              explorerBaseUrl={explorerBaseUrl}
+              isLatest={i === 0}
+            />
+          ))}
+        </ul>
       )}
     </div>
+  );
+}
+
+interface FillRowProps {
+  fill: SpreadEvent;
+  explorerBaseUrl: string;
+  /** First row carries legacy testids + a subtle latest highlight. */
+  isLatest: boolean;
+}
+
+function FillRow({ fill, explorerBaseUrl, isLatest }: FillRowProps): JSX.Element {
+  return (
+    <li
+      className={clsx(
+        'grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-3 rounded-md px-2 py-1.5 text-xs transition',
+        isLatest && 'bg-[--color-surface-2]',
+      )}
+    >
+      <a
+        href={`${explorerBaseUrl}/${fill.txHash}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 font-mono text-[--color-text-muted] transition hover:text-[--color-text-default]"
+        {...(isLatest ? { 'data-testid': 'spread-counter-tx-link' } : {})}
+      >
+        <span className="truncate">
+          {fill.txHash.slice(0, 10)}…{fill.txHash.slice(-6)}
+        </span>
+        <ExternalLink aria-hidden="true" className="size-3 text-[--color-text-faint]" />
+      </a>
+      <span className="hidden font-mono text-[--color-text-faint] tabular-nums sm:inline">
+        {fill.blockNumber !== undefined ? `#${fill.blockNumber}` : ''}
+      </span>
+      <span className="font-mono text-[--color-text-faint] tabular-nums">
+        {TIME_FORMATTER.format(fill.timestamp)}
+      </span>
+      {/* Per-fill delta uses the money color — same family as the Big
+          Number. Mono+tabular so the digits align across consecutive fills. */}
+      <span
+        className="font-mono font-semibold tabular-nums text-[--color-money]"
+        {...(isLatest ? { 'data-testid': 'spread-counter-delta' } : {})}
+      >
+        +${USD_FORMATTER.format(fill.amountUSD)}
+      </span>
+    </li>
   );
 }

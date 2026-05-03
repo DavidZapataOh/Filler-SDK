@@ -179,20 +179,20 @@ describe('ThreeFilesReveal — design system locks', () => {
 });
 
 describe('ThreeFilesReveal — accessibility', () => {
-  test('uses an ordered list for the four files', () => {
+  test('uses an ordered list for the three files and the bond', () => {
     render(<ThreeFilesReveal trigger="manual" step={0} />);
-    const list = screen.getByRole('list', { name: /four files in a Filler SDK solver/i });
+    const list = screen.getByRole('list', { name: /three files and a bond/i });
     expect(list.tagName).toBe('OL');
   });
 
   test('headline contains the canonical mantra', () => {
     render(<ThreeFilesReveal trigger="manual" step={0} />);
-    expect(screen.getByText(/Tres archivos y un bond/i)).toBeInTheDocument();
+    expect(screen.getByText(/Three files and a bond/i)).toBeInTheDocument();
   });
 
-  test('"y un bond" appears as the FillerBond.sol card blurb', () => {
+  test('"Skin in the game" appears as the FillerBond.sol card blurb', () => {
     render(<ThreeFilesReveal trigger="manual" step={4} />);
     const bond = screen.getByTestId('file-card-FillerBond.sol');
-    expect(bond.textContent).toMatch(/y un bond/i);
+    expect(bond.textContent).toMatch(/skin in the game/i);
   });
 });
