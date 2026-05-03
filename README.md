@@ -84,7 +84,7 @@ A swapper (or DAO treasury) signs an intent off-chain. The intent lands at the c
 
 The demo runs against an Ethereum mainnet fork, deploys `Filler.sol` + `FillerBond.sol` at deterministic addresses, signs a real UniswapX V2 Dutch order, and executes the fill on-chain — all in **25 seconds**. Real swap: 100 USDC → 0.043 WETH, JIT spread captured by the Filler.
 
-Live demo (replay mode, deterministic): **[filler-sdk.vercel.app](https://filler-sdk.vercel.app/?replay=treasury)** *(URL — operator confirms post-deploy)*
+Live demo (replay mode, deterministic): **[filler-sdk.vercel.app](https://filler-sdk.vercel.app/?replay=treasury)**
 
 Live documentation: **[filler-sdk-docs.vercel.app](https://filler-sdk-docs.vercel.app/)**
 
@@ -335,7 +335,7 @@ filler-sdk/
 
 ## Security
 
-Vulnerability reports: [SECURITY.md](./SECURITY.md). Email: **security@filler-sdk.xyz**.
+Vulnerability reports: [SECURITY.md](./SECURITY.md). 
 
 Pre-mainnet posture:
 
