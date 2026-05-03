@@ -224,5 +224,3 @@ The KeeperHub track is high-leverage for solver builders — MEV-protected fill 
 - Validate our wire-format guesses against your real spec.
 - Contribute the KeeperHubClient to the broader solver-SDK ecosystem (MIT-licensed, ready for upstream adoption).
 - Co-author docs / cookbook pages on the integration patterns above.
-
-— The Filler SDK team, ETHGlobal OpenAgents 2026
