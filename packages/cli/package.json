@@ -1,11 +1,11 @@
 {
   "name": "create-filler",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scaffold a new Filler SDK solver in seconds",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "create-filler": "./dist/cli.js"
+    "create-filler": "dist/cli.js"
   },
   "files": ["dist", "templates"],
   "scripts": {

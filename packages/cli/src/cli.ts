@@ -24,7 +24,6 @@
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import {
   cancel as clackCancel,
@@ -435,24 +434,13 @@ export async function main(argv: readonly string[]): Promise<number> {
 
 // === Entrypoint guard ===================================================
 
-const invokedDirectly = (() => {
-  try {
-    const argv1 = process.argv[1];
-    if (typeof argv1 !== 'string') return false;
-    // On Windows, `import.meta.url` is `file:///C:/path/to/cli.js` (forward
-    // slashes, file:// prefix) while `process.argv[1]` is `C:\path\to\cli.js`
-    // (backslashes, no prefix). A naive `url.endsWith(argv1)` fails. Convert
-    // both to canonical absolute paths and compare.
-    const fromUrl = fileURLToPath(import.meta.url);
-    return resolve(fromUrl) === resolve(argv1);
-  } catch {
-    return false;
-  }
+// This file is the package's bin entry. Always run main on load —
+// `npx`-installed binaries land in `node_modules/.bin/<name>` as symlinks,
+// so `process.argv[1] !== fileURLToPath(import.meta.url)` and any
+// "import.meta.url === argv[1]" guard would silently skip main(). The
+// package has no library entry; importers use the source files directly
+// in tests.
+void (async () => {
+  const code = await main(process.argv.slice(2));
+  process.exit(code);
 })();
-
-if (invokedDirectly) {
-  void (async () => {
-    const code = await main(process.argv.slice(2));
-    process.exit(code);
-  })();
-}
