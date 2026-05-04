@@ -65,7 +65,7 @@
     "@types/node": "^25.6.0",
     "@uniswap/uniswapx-sdk": "^3.0.2",
     "ethers": "^5",
-    "size-limit": "^11.1.6",
+    "size-limit": "^12.1.0",
     "tsup": "^8.3.5",
     "viem": "^2.48.7",
     "vitest": "^4.1.5"
