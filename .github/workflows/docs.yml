@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -67,7 +67,7 @@ jobs:
           echo "Contracts pages:  $(find apps/docs/dist/api/contracts -name '*.html' 2>/dev/null | wc -l)"
           echo "Total dist size:  $(du -sh apps/docs/dist | cut -f1)"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: docs-${{ github.run_id }}
@@ -83,7 +83,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check Vercel secrets configured
         id: gate
@@ -95,7 +95,7 @@ jobs:
             echo "::warning::VERCEL_TOKEN not configured — skipping deploy. Operator action: add the secret in repo settings."
           fi
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: steps.gate.outputs.skip == 'false'
         with:
           name: docs-${{ github.run_id }}
